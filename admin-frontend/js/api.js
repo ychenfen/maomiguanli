@@ -1,0 +1,142 @@
+// API Endpoint Definitions
+const API_BASE = (window.__API_BASE__ || '/api').replace(/\/$/, '');
+
+const API = {
+    // Authentication
+    auth: {
+        login: `${API_BASE}/users/login`,
+        logout: `${API_BASE}/users/logout`,
+        currentUser: `${API_BASE}/users/profile`
+    },
+
+    // Dashboard
+    dashboard: {
+        statistics: `${API_BASE}/admin/dashboard/statistics`,
+        userGrowth: `${API_BASE}/admin/dashboard/user-growth`,
+        activityStats: `${API_BASE}/admin/dashboard/activity`,
+        popularCats: `${API_BASE}/admin/dashboard/popular-cats`,
+        activeUsers: `${API_BASE}/admin/dashboard/active-users`,
+        systemHealth: `${API_BASE}/admin/dashboard/system-health`,
+        pendingTasks: `${API_BASE}/admin/dashboard/pending-tasks`,
+        recentActivities: `${API_BASE}/admin/dashboard/recent-activities`,
+        financialOverview: `${API_BASE}/admin/dashboard/financial-overview`,
+        adoptionTrends: `${API_BASE}/admin/dashboard/adoption-trends`,
+        verificationStats: `${API_BASE}/admin/dashboard/verification-stats`,
+        rescueStats: `${API_BASE}/admin/dashboard/rescue-stats`
+    },
+
+    // User Management
+    users: {
+        list: `${API_BASE}/users/page`,
+        detail: (id) => `${API_BASE}/users/${id}`,
+        create: `${API_BASE}/users/register`,
+        update: (id) => `${API_BASE}/users/${id}`,
+        delete: (id) => `${API_BASE}/users/${id}`,
+        changeStatus: (id) => `${API_BASE}/users/${id}/status`,
+        changeRole: (id) => `${API_BASE}/users/${id}/role`,
+        statistics: `${API_BASE}/users/statistics`,
+        overview: `${API_BASE}/users/overview`
+    },
+
+    // Cat Management
+    cats: {
+        list: `${API_BASE}/cats/page`,
+        detail: (id) => `${API_BASE}/cats/${id}`,
+        create: `${API_BASE}/cats`,
+        update: (id) => `${API_BASE}/cats/${id}`,
+        delete: (id) => `${API_BASE}/cats/${id}`,
+        updateStatus: (id) => `${API_BASE}/cats/${id}/status`,
+        statistics: `${API_BASE}/cats/statistics`
+    },
+
+    // Adoption Management
+    adoptions: {
+        list: `${API_BASE}/adoptions/page`,
+        detail: (id) => `${API_BASE}/adoptions/${id}`,
+        approve: (id) => `${API_BASE}/adoptions/${id}/approve`,
+        reject: (id) => `${API_BASE}/adoptions/${id}/reject`,
+        statistics: `${API_BASE}/adoptions/statistics`
+    },
+
+    // Verification Management
+    verifications: {
+        list: `${API_BASE}/verifications/page`,
+        detail: (id) => `${API_BASE}/verifications/${id}`,
+        approve: (id) => `${API_BASE}/verifications/${id}/approve`,
+        reject: (id) => `${API_BASE}/verifications/${id}/reject`,
+        batchApprove: `${API_BASE}/verifications/batch-approve`,
+        statistics: `${API_BASE}/verifications/statistics`
+    },
+
+    // Rescue Management
+    rescues: {
+        list: `${API_BASE}/rescues/page`,
+        detail: (id) => `${API_BASE}/rescues/${id}`,
+        create: `${API_BASE}/rescues`,
+        update: (id) => `${API_BASE}/rescues/${id}`,
+        delete: (id) => `${API_BASE}/rescues/${id}`,
+        updateStatus: (id) => `${API_BASE}/rescues/${id}/status`,
+        assign: (id) => `${API_BASE}/rescues/${id}/assign`,
+        statistics: `${API_BASE}/rescues/statistics`
+    },
+
+    // Finance Management
+    finance: {
+        list: `${API_BASE}/finance/transactions/page`,
+        detail: (id) => `${API_BASE}/finance/transactions/${id}`,
+        approve: (id) => `${API_BASE}/finance/transactions/${id}/approve`,
+        reject: (id) => `${API_BASE}/finance/transactions/${id}/reject`,
+        statistics: `${API_BASE}/finance/statistics`,
+        report: `${API_BASE}/finance/report`,
+        export: `${API_BASE}/finance/export`
+    },
+
+    // Cat Tag Management
+    catTags: {
+        list: `${API_BASE}/cat-tags/page`,
+        detail: (id) => `${API_BASE}/cat-tags/${id}`,
+        create: `${API_BASE}/cat-tags`,
+        update: (id) => `${API_BASE}/cat-tags/${id}`,
+        delete: (id) => `${API_BASE}/cat-tags/${id}`
+    },
+
+    // University Management
+    universities: {
+        list: `${API_BASE}/universities/page`,
+        detail: (id) => `${API_BASE}/universities/${id}`,
+        create: `${API_BASE}/universities`,
+        update: (id) => `${API_BASE}/universities/${id}`,
+        delete: (id) => `${API_BASE}/universities/${id}`
+    },
+
+    // Dynamic/Community Management
+    dynamics: {
+        list: `${API_BASE}/dynamics/page`,
+        detail: (id) => `${API_BASE}/dynamics/${id}`,
+        delete: (id) => `${API_BASE}/dynamics/${id}`,
+        statistics: `${API_BASE}/dynamics/statistics`
+    },
+
+    // Crowdfunding Management
+    crowdfunding: {
+        list: `${API_BASE}/crowdfunding/page`,
+        detail: (id) => `${API_BASE}/crowdfunding/${id}`,
+        approve: (id) => `${API_BASE}/crowdfunding/${id}/approve`,
+        reject: (id) => `${API_BASE}/crowdfunding/${id}/reject`,
+        close: (id) => `${API_BASE}/crowdfunding/${id}/close`,
+        statistics: `${API_BASE}/crowdfunding/statistics`
+    },
+
+    // Notification Management
+    notifications: {
+        list: `${API_BASE}/notifications/page`,
+        detail: (id) => `${API_BASE}/notifications/${id}`,
+        send: `${API_BASE}/notifications/send`,
+        sendBatch: `${API_BASE}/notifications/send-batch`,
+        delete: (id) => `${API_BASE}/notifications/${id}`,
+        statistics: `${API_BASE}/notifications/statistics`
+    }
+};
+
+// Make API_ENDPOINTS globally accessible
+window.API_ENDPOINTS = API;

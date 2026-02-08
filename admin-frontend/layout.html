@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 猫咪救助系统</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>🐱 猫咪救助系统</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#/" class="nav-item active">
+                    <span class="nav-item-icon">📊</span>
+                    <span>数据概览</span>
+                </a>
+                <a href="#/users" class="nav-item">
+                    <span class="nav-item-icon">👥</span>
+                    <span>用户管理</span>
+                </a>
+                <a href="#/cats" class="nav-item">
+                    <span class="nav-item-icon">🐱</span>
+                    <span>猫咪管理</span>
+                </a>
+                <a href="#/adoptions" class="nav-item">
+                    <span class="nav-item-icon">📝</span>
+                    <span>领养申请</span>
+                </a>
+                <a href="#/verifications" class="nav-item">
+                    <span class="nav-item-icon">✓</span>
+                    <span>身份认证</span>
+                </a>
+                <a href="#/rescues" class="nav-item">
+                    <span class="nav-item-icon">🚑</span>
+                    <span>救助信息</span>
+                </a>
+                <a href="#/finance" class="nav-item">
+                    <span class="nav-item-icon">💰</span>
+                    <span>财务管理</span>
+                </a>
+                <a href="#/cat-tags" class="nav-item">
+                    <span class="nav-item-icon">🏷️</span>
+                    <span>猫咪标签</span>
+                </a>
+                <a href="#/universities" class="nav-item">
+                    <span class="nav-item-icon">🏫</span>
+                    <span>高校管理</span>
+                </a>
+                <a href="#/dynamics" class="nav-item">
+                    <span class="nav-item-icon">💬</span>
+                    <span>社区动态</span>
+                </a>
+                <a href="#/crowdfunding" class="nav-item">
+                    <span class="nav-item-icon">💝</span>
+                    <span>众筹管理</span>
+                </a>
+                <a href="#/notifications" class="nav-item">
+                    <span class="nav-item-icon">🔔</span>
+                    <span>通知管理</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <button class="toggle-sidebar-btn" id="toggleSidebar">☰</button>
+                    <div class="breadcrumb" id="breadcrumb">
+                        <span class="breadcrumb-item active">数据概览</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar">A</div>
+                        <span id="userName">管理员</span>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="Auth.logout()">退出登录</button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area" id="contentArea">
+                <!-- Dynamic content will be loaded here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="js/api.js?v=20260207002"></script>
+    <script src="js/common.js?v=20260207002"></script>
+    <script src="js/components.js?v=20260207002"></script>
+    <script>
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check authentication
+            if (!Auth.requireAuth()) return;
+
+            // Display user info
+            const user = Auth.getUser();
+            if (user) {
+                document.getElementById('userName').textContent = user.realName || user.username;
+                const avatar = (user.realName || user.username).charAt(0).toUpperCase();
+                document.getElementById('userAvatar').textContent = avatar;
+            }
+
+            // Toggle sidebar
+            document.getElementById('toggleSidebar').addEventListener('click', () => {
+                const sidebar = document.getElementById('sidebar');
+                const mainContent = document.getElementById('mainContent');
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            });
+
+            // Initialize router
+            Router.init();
+
+            // Register routes
+            Router.register('/', loadDashboard);
+            Router.register('/users', loadUsers);
+            Router.register('/cats', loadCats);
+            Router.register('/adoptions', loadAdoptions);
+            Router.register('/verifications', loadVerifications);
+            Router.register('/rescues', loadRescues);
+            Router.register('/finance', loadFinance);
+            Router.register('/cat-tags', loadCatTags);
+            Router.register('/universities', loadUniversities);
+            Router.register('/dynamics', loadDynamics);
+            Router.register('/crowdfunding', loadCrowdfunding);
+            Router.register('/notifications', loadNotifications);
+        });
+
+        // Route handlers - will load content from pages
+        function loadDashboard() {
+            updateBreadcrumb('数据概览');
+            loadPage('pages/dashboard.html');
+        }
+
+        function loadUsers() {
+            updateBreadcrumb('用户管理');
+            loadPage('pages/users.html');
+        }
+
+        function loadCats() {
+            updateBreadcrumb('猫咪管理');
+            loadPage('pages/cats.html');
+        }
+
+        function loadAdoptions() {
+            updateBreadcrumb('领养申请');
+            loadPage('pages/adoptions.html');
+        }
+
+        function loadVerifications() {
+            updateBreadcrumb('身份认证');
+            loadPage('pages/verifications.html');
+        }
+
+        function loadRescues() {
+            updateBreadcrumb('救助信息');
+            loadPage('pages/rescues.html');
+        }
+
+        function loadFinance() {
+            updateBreadcrumb('财务管理');
+            loadPage('pages/finance.html');
+        }
+
+        function loadCatTags() {
+            updateBreadcrumb('猫咪标签');
+            loadPage('pages/cat-tags.html');
+        }
+
+        function loadUniversities() {
+            updateBreadcrumb('高校管理');
+            loadPage('pages/universities.html');
+        }
+
+        function loadDynamics() {
+            updateBreadcrumb('社区动态');
+            loadPage('pages/dynamics.html');
+        }
+
+        function loadCrowdfunding() {
+            updateBreadcrumb('众筹管理');
+            loadPage('pages/crowdfunding.html');
+        }
+
+        function loadNotifications() {
+            updateBreadcrumb('通知管理');
+            loadPage('pages/notifications.html');
+        }
+
+        // Update breadcrumb
+        function updateBreadcrumb(title) {
+            document.getElementById('breadcrumb').innerHTML = `
+                <span class="breadcrumb-item active">${title}</span>
+            `;
+        }
+
+        // Load page content
+        async function loadPage(url) {
+            const contentArea = document.getElementById('contentArea');
+            Loading.show();
+
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    const html = await response.text();
+                    contentArea.innerHTML = html;
+
+                    // Execute any scripts in the loaded content
+                    const scripts = contentArea.querySelectorAll('script');
+                    scripts.forEach(script => {
+                        const newScript = document.createElement('script');
+                        newScript.textContent = script.textContent;
+                        document.body.appendChild(newScript);
+                        document.body.removeChild(newScript);
+                    });
+                } else {
+                    contentArea.innerHTML = `
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">⚠️</div>
+                                    <div class="empty-state-text">页面加载失败</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Load page error:', error);
+                contentArea.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">⚠️</div>
+                                <div class="empty-state-text">页面加载失败: ${error.message}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } finally {
+                Loading.hide();
+            }
+        }
+    </script>
+</body>
+</html>

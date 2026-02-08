@@ -1,0 +1,2812 @@
+--- deploy/PATCHES/frontend_index.html.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/frontend/index.html	2026-02-08 10:26:27
+@@ -7,6 +7,7 @@
+     <meta name="description" content="校园流浪猫救助平台 - 让每一只流浪猫都有温暖的家">
+     <meta name="keywords" content="流浪猫,救助,领养,校园,爱心">
+     <title>校园流浪猫救助平台</title>
++    <script src="/config.js"></script>
+     <script type="module" crossorigin src="/assets/index-BeZeSF5x.js"></script>
+     <link rel="modulepreload" crossorigin href="/assets/vue-vendor-L7KxampG.js">
+     <link rel="modulepreload" crossorigin href="/assets/element-plus-o-j_G_-z.js">
+--- deploy/PATCHES/frontend_server.js.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/frontend/server.js	2026-02-08 10:26:35
+@@ -3,6 +3,8 @@
+ const path = require('path');
+ 
+ const PORT = 5000;
++const API_HOST = process.env.API_HOST || '127.0.0.1';
++const API_PORT = Number.parseInt(process.env.API_PORT || '8080', 10);
+ 
+ const mimeTypes = {
+   '.html': 'text/html',
+@@ -25,11 +27,11 @@
+   // API 代理
+   if (pathname.startsWith('/api/')) {
+     const options = {
+-      hostname: 'localhost',
+-      port: 8080,
++      hostname: API_HOST,
++      port: API_PORT,
+       path: req.url,
+       method: req.method,
+-      headers: { ...req.headers, host: 'localhost:8080' }
++      headers: { ...req.headers, host: `${API_HOST}:${API_PORT}` }
+     };
+ 
+     const proxyReq = http.request(options, (proxyRes) => {
+--- deploy/PATCHES/admin-frontend_server.js.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/admin-frontend/server.js	2026-02-08 10:26:42
+@@ -2,7 +2,9 @@
+ const fs = require('fs');
+ const path = require('path');
+ 
+-const PORT = 5001;
++const PORT = 5001;
++const API_HOST = process.env.API_HOST || '127.0.0.1';
++const API_PORT = Number.parseInt(process.env.API_PORT || '8080', 10);
+ 
+ const mimeTypes = {
+   '.html': 'text/html',
+@@ -19,10 +21,34 @@
+ const server = http.createServer((req, res) => {
+   let pathname = req.url.split('?')[0];
+ 
+-  // 默认页面
+-  if (pathname === '/') {
+-    pathname = '/login.html';
+-  }
++  // API 代理
++  if (pathname.startsWith('/api/')) {
++    const options = {
++      hostname: API_HOST,
++      port: API_PORT,
++      path: req.url,
++      method: req.method,
++      headers: { ...req.headers, host: `${API_HOST}:${API_PORT}` }
++    };
++
++    const proxyReq = http.request(options, (proxyRes) => {
++      res.writeHead(proxyRes.statusCode, proxyRes.headers);
++      proxyRes.pipe(res);
++    });
++
++    proxyReq.on('error', (e) => {
++      res.writeHead(502);
++      res.end('Proxy Error: ' + e.message);
++    });
++
++    req.pipe(proxyReq);
++    return;
++  }
++
++  // 默认页面
++  if (pathname === '/') {
++    pathname = '/login.html';
++  }
+ 
+   // 静态文件
+   let filePath = path.join(__dirname, pathname);
+--- deploy/PATCHES/admin-frontend_js_api.js.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/admin-frontend/js/api.js	2026-02-08 10:26:46
+@@ -1,5 +1,5 @@
+ // API Endpoint Definitions
+-const API_BASE = 'http://localhost:8080/api';
++const API_BASE = (window.__API_BASE__ || '/api').replace(/\/$/, '');
+ 
+ const API = {
+     // Authentication
+--- deploy/PATCHES/admin-frontend_login.html.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/admin-frontend/login.html	2026-02-08 10:26:51
+@@ -135,8 +135,9 @@
+         </form>
+     </div>
+ 
+-    <script>
+-        const API_BASE = 'http://localhost:8080/api';
++    <script src="config.js"></script>
++    <script>
++        const API_BASE = (window.__API_BASE__ || '/api').replace(/\/$/, '');
+ 
+         function showError(message) {
+             const errorDiv = document.getElementById('errorMessage');
+--- deploy/PATCHES/admin-frontend_dashboard.html.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/admin-frontend/dashboard.html	2026-02-08 10:27:00
+@@ -216,8 +216,9 @@
+         </div>
+     </div>
+ 
+-    <script>
+-        const API_BASE = 'http://localhost:8080/api';
++    <script src="config.js"></script>
++    <script>
++        const API_BASE = (window.__API_BASE__ || '/api').replace(/\/$/, '');
+ 
+         // 检查登录状态
+         function checkAuth() {
+--- deploy/PATCHES/admin-frontend_api-test.html.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/admin-frontend/api-test.html	2026-02-08 10:27:08
+@@ -95,8 +95,9 @@
+         <pre id="usersResult">需要先登录...</pre>
+     </div>
+ 
++    <script src="config.js"></script>
+     <script>
+-        const API_BASE = 'http://localhost:8080/api';
++        const API_BASE = (window.__API_BASE__ || '/api').replace(/\/$/, '');
+         let token = null;
+ 
+         // 测试后端健康状态
+@@ -117,7 +118,7 @@
+             } catch (error) {
+                 statusEl.className = 'status error';
+                 statusEl.textContent = '✗ 失败';
+-                resultEl.textContent = `错误: ${error.message}\n\n请确保后端服务已启动在 http://localhost:8080`;
++                resultEl.textContent = `错误: ${error.message}\n\n请确保后端服务已启动`;
+             }
+         }
+ 
+--- deploy/PATCHES/admin-frontend_layout.html.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/admin-frontend/layout.html	2026-02-08 10:27:15
+@@ -94,6 +94,7 @@
+     </div>
+ 
+     <!-- Scripts -->
++    <script src="config.js"></script>
+     <script src="js/api.js?v=20260207002"></script>
+     <script src="js/common.js?v=20260207002"></script>
+     <script src="js/components.js?v=20260207002"></script>
+--- deploy/PATCHES/frontend_AGENTS.md.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/frontend/AGENTS.md	2026-02-08 10:27:23
+@@ -10,9 +10,9 @@
+ - Run (cross-platform): `node server.js`.
+ 
+ ## API wiring
+-- `server.js` proxies `/api/*` to `http://localhost:8080`.
++- `server.js` proxies `/api/*` to the backend defined by `API_HOST`/`API_PORT` (default 127.0.0.1:8080).
+ - Keep frontend API calls relative to `/api` so the proxy is used.
+-- If backend host/port changes, update `server.js`.
++- If backend host/port changes, update env vars or `server.js`.
+ 
+ ## Conventions
+ - This is a compiled Vue app (no `package.json` here). Prefer updating the original source repo and re-building.
+--- deploy/PATCHES/admin-frontend_AGENTS.md.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/admin-frontend/AGENTS.md	2026-02-08 10:27:27
+@@ -10,8 +10,8 @@
+ - Run (cross-platform): `node server.js`.
+ 
+ ## API wiring
+-- API base URL is hardcoded in `js/api.js` as `http://localhost:8080/api`.
+-- If backend host/port changes, update `js/api.js`.
++- API base URL is configured in `config.js` via `window.__API_BASE__` (default `/api`).
++- `server.js` proxies `/api/*` to the backend defined by `API_HOST`/`API_PORT`.
+ 
+ ## Conventions
+ - This admin UI is plain HTML/JS/CSS (no build step).
+--- deploy/PATCHES/admin-frontend_API接口问题修复说明.md.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/admin-frontend/API接口问题修复说明.md	2026-02-08 10:27:40
+@@ -34,8 +34,8 @@
+    ```
+ 
+ 3. **问题分析：**
+-   - 前端请求：`http://localhost:8080/api/admin/users/statistics`
+-   - 后端实际：`http://localhost:8080/api/users/statistics`
++   - 前端请求：`http://<backend-host>:<port>/api/admin/users/statistics`
++   - 后端实际：`http://<backend-host>:<port>/api/users/statistics`
+    - 结果：404 Not Found → 401 Unauthorized
+ 
+ ## ✅ 修复方案
+@@ -201,7 +201,7 @@
+ 
+ 1. **API文档同步**
+    - 建议创建完整的API文档
+-   - 使用Swagger UI查看：`http://localhost:8080/swagger-ui.html`
++   - 使用Swagger UI查看：`http://<backend-host>:<port>/swagger-ui.html`
+ 
+ 2. **前后端协作**
+    - 前端开发前先查看后端API文档
+--- deploy/PATCHES/admin-frontend_新版管理后台说明.md.20260208_102612.bak	2026-02-08 10:26:12
++++ deploy/admin-frontend/新版管理后台说明.md	2026-02-08 10:27:40
+@@ -3,7 +3,7 @@
+ ## 🚀 启动步骤
+ 
+ ### 1. 启动后端服务
+-确保后端服务已经启动并运行在 `http://localhost:8080`
++确保后端服务已经启动并运行在 `http://<backend-host>:<port>`
+ 
+ ```bash
+ # 在部署目录下运行
+@@ -123,7 +123,7 @@
+ - 数据库连接失败
+ 
+ **解决方法：**
+-1. 检查后端服务是否运行：访问 `http://localhost:8080/api/health`
++1. 检查后端服务是否运行：访问 `http://<backend-host>:<port>/api/health`
+ 2. 查看后端日志：`backend/logs/`
+ 3. 确认数据库已启动
+ 
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/backend/application-local.yml	2026-02-08 10:23:50
+@@ -0,0 +1,30 @@
++# 本地开发配置（Mac/Windows）
++server:
++  port: ${APP_PORT:8080}
++
++spring:
++  web:
++    resources:
++      static-locations: classpath:/static/,file:../frontend/,file:../uploads/
++      add-mappings: true
++  mvc:
++    static-path-pattern: /**
++
++  datasource:
++    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:cat_rescue}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
++    username: ${DB_USER:root}
++    password: ${DB_PASS:123456}
++
++cors:
++  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001}
++
++file:
++  upload-path: ../uploads/
++
++jwt:
++  secret: cat-rescue-jwt-secret-key-2024-very-long-string-for-security-purpose-32chars
++
++logging:
++  level:
++    com.campus.cat: info
++    com.campus.cat.module.*.mapper: warn
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/start_mac.sh	2026-02-08 10:32:02
+@@ -0,0 +1,111 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++cd "$ROOT"
++
++APP_PORT="${APP_PORT:-8080}"
++API_HOST="${API_HOST:-127.0.0.1}"
++API_PORT="${API_PORT:-8080}"
++
++DB_HOST="${DB_HOST:-127.0.0.1}"
++DB_PORT="${DB_PORT:-3306}"
++DB_NAME="${DB_NAME:-cat_rescue}"
++DB_USER="${DB_USER:-root}"
++DB_PASS="${DB_PASS:-123456}"
++
++CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001}"
++SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
++
++log() {
++  printf "[%s] %s\n" "$(date +%H:%M:%S)" "$*"
++}
++
++log "检查 Java..."
++if ! java -version >/dev/null 2>&1; then
++  echo "未检测到 Java，请先安装 Java 17+" >&2
++  exit 1
++fi
++java -version 2>&1 | head -n 1
++
++log "检查 Node.js..."
++if ! node -v >/dev/null 2>&1; then
++  echo "未检测到 Node.js，请先安装 Node 16+" >&2
++  exit 1
++fi
++node -v
++
++log "检查 MySQL 连接..."
++MYSQL_OK=0
++if command -v mysqladmin >/dev/null 2>&1; then
++  if [ -n "$DB_PASS" ]; then
++    mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" >/dev/null 2>&1 && MYSQL_OK=1 || MYSQL_OK=0
++  else
++    mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" >/dev/null 2>&1 && MYSQL_OK=1 || MYSQL_OK=0
++  fi
++elif command -v nc >/dev/null 2>&1; then
++  nc -z "$DB_HOST" "$DB_PORT" >/dev/null 2>&1 && MYSQL_OK=1 || MYSQL_OK=0
++fi
++
++if [ "$MYSQL_OK" -ne 1 ]; then
++  log "MySQL 未就绪：请确认 MySQL 已启动，并执行 init-db.bat 初始化数据库。"
++else
++  log "MySQL 端口可达。"
++fi
++
++if command -v mysql >/dev/null 2>&1; then
++  DB_EXISTS=""
++  if [ -n "$DB_PASS" ]; then
++    DB_EXISTS=$(mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" -N -s -e "SHOW DATABASES LIKE '$DB_NAME';" 2>/dev/null || true)
++  else
++    DB_EXISTS=$(mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -N -s -e "SHOW DATABASES LIKE '$DB_NAME';" 2>/dev/null || true)
++  fi
++  if [ -z "$DB_EXISTS" ]; then
++    log "数据库 $DB_NAME 不存在：请先运行初始化脚本。"
++  fi
++fi
++
++log "启动后端 (端口 $APP_PORT)..."
++nohup env \
++  APP_PORT="$APP_PORT" \
++  DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_NAME="$DB_NAME" DB_USER="$DB_USER" DB_PASS="$DB_PASS" \
++  CORS_ALLOWED_ORIGINS="$CORS_ALLOWED_ORIGINS" \
++  java -jar backend/cat-rescue.jar --spring.profiles.active="$SPRING_PROFILES_ACTIVE" \
++  > backend/backend.log 2>&1 &
++BACK_PID=$!
++log "后端 PID: $BACK_PID (日志: backend/backend.log)"
++
++log "启动用户前端 (端口 5000)..."
++nohup env API_HOST="$API_HOST" API_PORT="$API_PORT" node frontend/server.js > frontend/frontend.log 2>&1 &
++FRONT_PID=$!
++log "用户前端 PID: $FRONT_PID (日志: frontend/frontend.log)"
++
++log "启动管理后台 (端口 5001)..."
++nohup env API_HOST="$API_HOST" API_PORT="$API_PORT" node admin-frontend/server.js > admin-frontend/admin.log 2>&1 &
++ADMIN_PID=$!
++log "管理后台 PID: $ADMIN_PID (日志: admin-frontend/admin.log)"
++
++sleep 6
++
++log "健康检查..."
++health_url="http://127.0.0.1:${APP_PORT}/actuator/health"
++health_status=$(curl -sS -o /dev/null -w "%{http_code}" "$health_url" || echo "000")
++if [ "$health_status" != "200" ]; then
++  alt_url="http://127.0.0.1:${APP_PORT}/api/health"
++  alt_status=$(curl -sS -o /dev/null -w "%{http_code}" "$alt_url" || echo "000")
++else
++  alt_url=""
++  alt_status=""
++fi
++
++frontend_status=$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:5000/" || echo "000")
++admin_status=$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:5001/" || echo "000")
++
++log "后端健康检查: ${health_url} -> ${health_status}"
++if [ -n "$alt_url" ]; then
++  log "后端备用检查: ${alt_url} -> ${alt_status}"
++fi
++log "用户前端: http://127.0.0.1:5000/ -> ${frontend_status}"
++log "管理后台: http://127.0.0.1:5001/ -> ${admin_status}"
++
++log "启动完成。"
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/start_windows.ps1	2026-02-08 10:32:38
+@@ -0,0 +1,132 @@
++#requires -version 5.1
++Set-StrictMode -Version Latest
++
++$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
++Set-Location $Root
++
++if (-not $env:APP_PORT) { $env:APP_PORT = "8080" }
++if (-not $env:API_HOST) { $env:API_HOST = "127.0.0.1" }
++if (-not $env:API_PORT) { $env:API_PORT = $env:APP_PORT }
++
++if (-not $env:DB_HOST) { $env:DB_HOST = "127.0.0.1" }
++if (-not $env:DB_PORT) { $env:DB_PORT = "3306" }
++if (-not $env:DB_NAME) { $env:DB_NAME = "cat_rescue" }
++if (-not $env:DB_USER) { $env:DB_USER = "root" }
++if (-not $env:DB_PASS) { $env:DB_PASS = "123456" }
++
++if (-not $env:CORS_ALLOWED_ORIGINS) {
++  $env:CORS_ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001"
++}
++if (-not $env:SPRING_PROFILES_ACTIVE) { $env:SPRING_PROFILES_ACTIVE = "local" }
++
++function Write-Log($msg) {
++  $ts = (Get-Date).ToString("HH:mm:ss")
++  Write-Host "[$ts] $msg"
++}
++
++Write-Log "检查 Java..."
++try {
++  & java -version 2>$null | Out-Null
++} catch {
++  Write-Error "未检测到 Java，请先安装 Java 17+"
++  exit 1
++}
++& java -version 2>&1 | Select-Object -First 1 | ForEach-Object { Write-Host $_ }
++
++Write-Log "检查 Node.js..."
++try {
++  & node -v 2>$null | Out-Null
++} catch {
++  Write-Error "未检测到 Node.js，请先安装 Node 16+"
++  exit 1
++}
++& node -v 2>&1 | Select-Object -First 1 | ForEach-Object { Write-Host $_ }
++
++Write-Log "检查 MySQL 连接..."
++$mysqlOk = $false
++if (Get-Command mysqladmin -ErrorAction SilentlyContinue) {
++  try {
++    if ($env:DB_PASS) {
++      & mysqladmin ping -h $env:DB_HOST -P $env:DB_PORT -u $env:DB_USER -p$env:DB_PASS | Out-Null
++    } else {
++      & mysqladmin ping -h $env:DB_HOST -P $env:DB_PORT -u $env:DB_USER | Out-Null
++    }
++    $mysqlOk = $true
++  } catch {
++    $mysqlOk = $false
++  }
++} else {
++  try {
++    $tcp = Test-NetConnection -ComputerName $env:DB_HOST -Port $env:DB_PORT -WarningAction SilentlyContinue
++    $mysqlOk = $tcp.TcpTestSucceeded
++  } catch {
++    $mysqlOk = $false
++  }
++}
++
++if (-not $mysqlOk) {
++  Write-Log "MySQL 未就绪：请确认 MySQL 已启动，并执行 init-db.bat 初始化数据库。"
++} else {
++  Write-Log "MySQL 端口可达。"
++}
++
++if (Get-Command mysql -ErrorAction SilentlyContinue) {
++  try {
++    $dbExists = $null
++    if ($env:DB_PASS) {
++      $dbExists = & mysql -h $env:DB_HOST -P $env:DB_PORT -u $env:DB_USER -p$env:DB_PASS -N -s -e "SHOW DATABASES LIKE '$($env:DB_NAME)';" 2>$null
++    } else {
++      $dbExists = & mysql -h $env:DB_HOST -P $env:DB_PORT -u $env:DB_USER -N -s -e "SHOW DATABASES LIKE '$($env:DB_NAME)';" 2>$null
++    }
++    if (-not $dbExists) {
++      Write-Log "数据库 $($env:DB_NAME) 不存在：请先运行初始化脚本。"
++    }
++  } catch {
++    # ignore
++  }
++}
++
++Write-Log "启动后端 (端口 $($env:APP_PORT))..."
++$backendLog = Join-Path $Root "backend\backend.log"
++Start-Process -FilePath "java" -ArgumentList @("-jar","cat-rescue.jar","--spring.profiles.active=$($env:SPRING_PROFILES_ACTIVE)") -WorkingDirectory (Join-Path $Root "backend") -RedirectStandardOutput $backendLog -RedirectStandardError $backendLog -NoNewWindow | Out-Null
++Write-Log "后端日志: $backendLog"
++
++Write-Log "启动用户前端 (端口 5000)..."
++$frontendLog = Join-Path $Root "frontend\frontend.log"
++Start-Process -FilePath "node" -ArgumentList @("server.js") -WorkingDirectory (Join-Path $Root "frontend") -RedirectStandardOutput $frontendLog -RedirectStandardError $frontendLog -NoNewWindow | Out-Null
++Write-Log "用户前端日志: $frontendLog"
++
++Write-Log "启动管理后台 (端口 5001)..."
++$adminLog = Join-Path $Root "admin-frontend\admin.log"
++Start-Process -FilePath "node" -ArgumentList @("server.js") -WorkingDirectory (Join-Path $Root "admin-frontend") -RedirectStandardOutput $adminLog -RedirectStandardError $adminLog -NoNewWindow | Out-Null
++Write-Log "管理后台日志: $adminLog"
++
++Start-Sleep -Seconds 6
++
++function Get-HttpStatus($url) {
++  try {
++    $resp = Invoke-WebRequest -UseBasicParsing -Uri $url -Method Get -TimeoutSec 5
++    return $resp.StatusCode
++  } catch {
++    if ($_.Exception.Response) {
++      return $_.Exception.Response.StatusCode.value__
++    }
++    return 0
++  }
++}
++
++Write-Log "健康检查..."
++$healthUrl = "http://127.0.0.1:$($env:APP_PORT)/actuator/health"
++$healthStatus = Get-HttpStatus $healthUrl
++if ($healthStatus -ne 200) {
++  $altUrl = "http://127.0.0.1:$($env:APP_PORT)/api/health"
++  $altStatus = Get-HttpStatus $altUrl
++}
++$frontendStatus = Get-HttpStatus "http://127.0.0.1:5000/"
++$adminStatus = Get-HttpStatus "http://127.0.0.1:5001/"
++
++Write-Log "后端健康检查: $healthUrl -> $healthStatus"
++if ($altUrl) { Write-Log "后端备用检查: $altUrl -> $altStatus" }
++Write-Log "用户前端: http://127.0.0.1:5000/ -> $frontendStatus"
++Write-Log "管理后台: http://127.0.0.1:5001/ -> $adminStatus"
++Write-Log "启动完成。"
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/README_WINDOWS.md	2026-02-08 10:35:16
+@@ -0,0 +1,40 @@
++# Windows 启动说明（无 Docker）
++
++## 1. 前置条件
++- Java 17+
++- Node.js 16+
++- MySQL 8+（已创建并可访问）
++
++## 2. 初始化数据库
++在 `deploy/` 目录执行：
++```
++init-db.bat
++```
++完成后会创建 `cat_rescue` 数据库与默认管理员账号（admin / 123456）。
++
++## 3. 一键启动
++PowerShell 中执行：
++```
++Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
++.\start_windows.ps1
++```
++
++## 4. 访问地址
++- 用户端：http://localhost:5000
++- 管理端：http://localhost:5001
++- 后端 API：http://localhost:8080/api
++
++## 5. 可配置环境变量
++在启动前可设置：
++- `APP_PORT`：后端端口（默认 8080）
++- `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASS`
++- `CORS_ALLOWED_ORIGINS`：允许的前端域名列表
++- `API_HOST` / `API_PORT`：前端代理目标（默认 127.0.0.1:8080）
++- `SPRING_PROFILES_ACTIVE`：默认 `local`
++
++示例（PowerShell）：
++```
++$env:DB_HOST = "127.0.0.1"
++$env:DB_PASS = "123456"
++.\start_windows.ps1
++```
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/README_MAC.md	2026-02-08 10:35:26
+@@ -0,0 +1,34 @@
++# macOS 启动说明（无 Docker）
++
++## 1. 前置条件
++- Java 17+
++- Node.js 16+
++- MySQL 8+（已创建并可访问）
++
++## 2. 初始化数据库
++在 `deploy/` 目录执行（数据库初始化脚本是 Windows bat，需要在 Windows 上执行或手动导入 SQL）：
++- 使用 MySQL 客户端导入 `cat_rescue.sql`
++- 或在 Windows 上运行 `init-db.bat`
++
++## 3. 一键启动
++在 `deploy/` 目录执行：
++```
++./start_mac.sh
++```
++
++## 4. 访问地址
++- 用户端：http://localhost:5000
++- 管理端：http://localhost:5001
++- 后端 API：http://localhost:8080/api
++
++## 5. 可配置环境变量
++- `APP_PORT`：后端端口（默认 8080）
++- `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASS`
++- `CORS_ALLOWED_ORIGINS`：允许的前端域名列表
++- `API_HOST` / `API_PORT`：前端代理目标（默认 127.0.0.1:8080）
++- `SPRING_PROFILES_ACTIVE`：默认 `local`
++
++示例：
++```
++DB_HOST=127.0.0.1 DB_PASS=123456 ./start_mac.sh
++```
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/config.js	2026-02-08 10:26:17
+@@ -0,0 +1,2 @@
++// Runtime API base configuration (can be edited without rebuilding)
++window.__API_BASE__ = window.__API_BASE__ || '/api';
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/admin-frontend/config.js	2026-02-08 10:26:21
+@@ -0,0 +1,2 @@
++// Runtime API base configuration (can be edited without rebuilding)
++window.__API_BASE__ = window.__API_BASE__ || '/api';
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/mvp.css	2026-02-08 10:32:55
+@@ -0,0 +1,47 @@
++body {
++  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
++  margin: 24px;
++  color: #222;
++}
++header {
++  margin-bottom: 16px;
++}
++nav a {
++  margin-right: 12px;
++}
++.card {
++  border: 1px solid #ddd;
++  border-radius: 8px;
++  padding: 16px;
++  margin-bottom: 16px;
++}
++label {
++  display: block;
++  margin: 8px 0 4px;
++}
++input, textarea, select {
++  width: 100%;
++  padding: 8px;
++  border: 1px solid #ccc;
++  border-radius: 4px;
++}
++button {
++  margin-top: 12px;
++  padding: 8px 14px;
++}
++pre {
++  background: #f7f7f7;
++  padding: 12px;
++  overflow: auto;
++}
++.badge {
++  display: inline-block;
++  padding: 2px 6px;
++  background: #eef;
++  border-radius: 4px;
++  margin-left: 6px;
++}
++.small {
++  color: #666;
++  font-size: 12px;
++}
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/mvp.js	2026-02-08 10:33:05
+@@ -0,0 +1,50 @@
++(() => {
++  const API_BASE = (window.__API_BASE__ || '/api').replace(/\/$/, '');
++
++  const qs = (name) => new URLSearchParams(window.location.search).get(name);
++
++  const getToken = () => localStorage.getItem('user_token') || '';
++  const setToken = (token) => {
++    if (token) {
++      localStorage.setItem('user_token', token);
++    }
++  };
++
++  const authHeaders = () => {
++    const token = getToken();
++    return token ? { Authorization: `Bearer ${token}` } : {};
++  };
++
++  const apiGet = async (path, params) => {
++    const url = new URL(`${API_BASE}${path}`, window.location.origin);
++    if (params) {
++      Object.entries(params).forEach(([k, v]) => {
++        if (v !== undefined && v !== null && v !== '') url.searchParams.append(k, v);
++      });
++    }
++    const res = await fetch(url.toString(), { headers: { ...authHeaders() } });
++    return res.json();
++  };
++
++  const apiSend = async (method, path, body) => {
++    const res = await fetch(`${API_BASE}${path}`, {
++      method,
++      headers: {
++        'Content-Type': 'application/json',
++        ...authHeaders()
++      },
++      body: body ? JSON.stringify(body) : undefined
++    });
++    return res.json();
++  };
++
++  window.MVP = {
++    API_BASE,
++    qs,
++    getToken,
++    setToken,
++    apiGet,
++    apiPost: (path, body) => apiSend('POST', path, body),
++    apiPut: (path, body) => apiSend('PUT', path, body)
++  };
++})();
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/mvp-login.html	2026-02-08 10:33:23
+@@ -0,0 +1,54 @@
++<!DOCTYPE html>
++<html lang="zh-CN">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>MVP 登录</title>
++  <link rel="stylesheet" href="/mvp/mvp.css" />
++  <script src="/config.js"></script>
++  <script src="/mvp/mvp.js"></script>
++</head>
++<body>
++  <header>
++    <h1>用户登录（MVP）</h1>
++    <nav>
++      <a href="/mvp/cloud-adoption-list.html">云养列表</a>
++      <a href="/mvp/donation-projects.html">捐献项目</a>
++    </nav>
++  </header>
++
++  <div class="card">
++    <p class="small">登录后会把 token 写入 localStorage.user_token，供“我的”页面使用。</p>
++    <label>用户名</label>
++    <input id="username" value="admin" />
++    <label>密码</label>
++    <input id="password" type="password" value="123456" />
++    <button id="loginBtn">登录</button>
++    <pre id="result"></pre>
++  </div>
++
++  <script>
++    const resultEl = document.getElementById('result');
++    document.getElementById('loginBtn').addEventListener('click', async () => {
++      const formData = new URLSearchParams();
++      formData.append('username', document.getElementById('username').value);
++      formData.append('password', document.getElementById('password').value);
++
++      try {
++        const res = await fetch(`${MVP.API_BASE}/users/login`, {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
++          body: formData.toString()
++        });
++        const data = await res.json();
++        if (data && data.data && data.data.token) {
++          MVP.setToken(data.data.token);
++        }
++        resultEl.textContent = JSON.stringify(data, null, 2);
++      } catch (err) {
++        resultEl.textContent = String(err);
++      }
++    });
++  </script>
++</body>
++</html>
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/cloud-adoption-list.html	2026-02-08 10:33:34
+@@ -0,0 +1,44 @@
++<!DOCTYPE html>
++<html lang="zh-CN">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>云养列表</title>
++  <link rel="stylesheet" href="/mvp/mvp.css" />
++  <script src="/config.js"></script>
++  <script src="/mvp/mvp.js"></script>
++</head>
++<body>
++  <header>
++    <h1>云养列表</h1>
++    <nav>
++      <a href="/mvp/mvp-login.html">登录</a>
++      <a href="/mvp/cloud-adoption-order.html">发起云养</a>
++      <a href="/mvp/cloud-adoption-mine.html">我的云养</a>
++    </nav>
++  </header>
++
++  <div class="card">
++    <label>pageNum</label>
++    <input id="pageNum" value="1" />
++    <label>pageSize</label>
++    <input id="pageSize" value="10" />
++    <button id="loadBtn">加载列表</button>
++  </div>
++
++  <div class="card">
++    <h3>结果</h3>
++    <pre id="result"></pre>
++  </div>
++
++  <script>
++    const resultEl = document.getElementById('result');
++    document.getElementById('loadBtn').addEventListener('click', async () => {
++      const pageNum = document.getElementById('pageNum').value;
++      const pageSize = document.getElementById('pageSize').value;
++      const data = await MVP.apiGet('/cloud-adoption/page', { pageNum, pageSize });
++      resultEl.textContent = JSON.stringify(data, null, 2);
++    });
++  </script>
++</body>
++</html>
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/cloud-adoption-detail.html	2026-02-08 10:33:44
+@@ -0,0 +1,44 @@
++<!DOCTYPE html>
++<html lang="zh-CN">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>云养详情</title>
++  <link rel="stylesheet" href="/mvp/mvp.css" />
++  <script src="/config.js"></script>
++  <script src="/mvp/mvp.js"></script>
++</head>
++<body>
++  <header>
++    <h1>云养详情</h1>
++    <nav>
++      <a href="/mvp/cloud-adoption-list.html">云养列表</a>
++      <a href="/mvp/cloud-adoption-order.html">发起云养</a>
++    </nav>
++  </header>
++
++  <div class="card">
++    <label>云养 ID</label>
++    <input id="adoptionId" placeholder="例如 1" />
++    <button id="loadBtn">加载详情</button>
++  </div>
++
++  <div class="card">
++    <pre id="result"></pre>
++  </div>
++
++  <script>
++    const resultEl = document.getElementById('result');
++    const idInput = document.getElementById('adoptionId');
++    const idFromQuery = MVP.qs('id');
++    if (idFromQuery) idInput.value = idFromQuery;
++
++    document.getElementById('loadBtn').addEventListener('click', async () => {
++      const id = idInput.value.trim();
++      if (!id) return;
++      const data = await MVP.apiGet(`/cloud-adoption/${id}`);
++      resultEl.textContent = JSON.stringify(data, null, 2);
++    });
++  </script>
++</body>
++</html>
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/cloud-adoption-order.html	2026-02-08 10:33:58
+@@ -0,0 +1,57 @@
++<!DOCTYPE html>
++<html lang="zh-CN">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>发起云养</title>
++  <link rel="stylesheet" href="/mvp/mvp.css" />
++  <script src="/config.js"></script>
++  <script src="/mvp/mvp.js"></script>
++</head>
++<body>
++  <header>
++    <h1>发起云养</h1>
++    <nav>
++      <a href="/mvp/mvp-login.html">登录</a>
++      <a href="/mvp/cloud-adoption-list.html">云养列表</a>
++    </nav>
++  </header>
++
++  <div class="card">
++    <p class="small">需要登录 token（localStorage.user_token）。</p>
++    <label>catId</label>
++    <input id="catId" placeholder="必填" />
++    <label>adoptionName</label>
++    <input id="adoptionName" placeholder="可选" />
++    <label>monthlyAmount</label>
++    <input id="monthlyAmount" placeholder="例如 99.00" />
++    <label>startDate</label>
++    <input id="startDate" placeholder="YYYY-MM-DD" />
++    <label>endDate</label>
++    <input id="endDate" placeholder="YYYY-MM-DD" />
++    <label>message</label>
++    <textarea id="message"></textarea>
++    <button id="submitBtn">提交云养</button>
++  </div>
++
++  <div class="card">
++    <pre id="result"></pre>
++  </div>
++
++  <script>
++    const resultEl = document.getElementById('result');
++    document.getElementById('submitBtn').addEventListener('click', async () => {
++      const payload = {
++        catId: Number(document.getElementById('catId').value),
++        adoptionName: document.getElementById('adoptionName').value || null,
++        monthlyAmount: document.getElementById('monthlyAmount').value || null,
++        startDate: document.getElementById('startDate').value || null,
++        endDate: document.getElementById('endDate').value || null,
++        message: document.getElementById('message').value || null
++      };
++      const data = await MVP.apiPost('/cloud-adoption', payload);
++      resultEl.textContent = JSON.stringify(data, null, 2);
++    });
++  </script>
++</body>
++</html>
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/cloud-adoption-mine.html	2026-02-08 10:34:07
+@@ -0,0 +1,37 @@
++<!DOCTYPE html>
++<html lang="zh-CN">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>我的云养</title>
++  <link rel="stylesheet" href="/mvp/mvp.css" />
++  <script src="/config.js"></script>
++  <script src="/mvp/mvp.js"></script>
++</head>
++<body>
++  <header>
++    <h1>我的云养</h1>
++    <nav>
++      <a href="/mvp/mvp-login.html">登录</a>
++      <a href="/mvp/cloud-adoption-list.html">云养列表</a>
++    </nav>
++  </header>
++
++  <div class="card">
++    <p class="small">需要登录 token（localStorage.user_token）。</p>
++    <button id="loadBtn">加载我的云养</button>
++  </div>
++
++  <div class="card">
++    <pre id="result"></pre>
++  </div>
++
++  <script>
++    const resultEl = document.getElementById('result');
++    document.getElementById('loadBtn').addEventListener('click', async () => {
++      const data = await MVP.apiGet('/cloud-adoption/my-adoptions');
++      resultEl.textContent = JSON.stringify(data, null, 2);
++    });
++  </script>
++</body>
++</html>
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/donation-projects.html	2026-02-08 10:34:17
+@@ -0,0 +1,43 @@
++<!DOCTYPE html>
++<html lang="zh-CN">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>捐献项目列表</title>
++  <link rel="stylesheet" href="/mvp/mvp.css" />
++  <script src="/config.js"></script>
++  <script src="/mvp/mvp.js"></script>
++</head>
++<body>
++  <header>
++    <h1>捐献项目列表（众筹）</h1>
++    <nav>
++      <a href="/mvp/mvp-login.html">登录</a>
++      <a href="/mvp/donation-new.html">发起捐献</a>
++      <a href="/mvp/donation-mine.html">我的捐献</a>
++    </nav>
++  </header>
++
++  <div class="card">
++    <label>pageNum</label>
++    <input id="pageNum" value="1" />
++    <label>pageSize</label>
++    <input id="pageSize" value="10" />
++    <button id="loadBtn">加载项目</button>
++  </div>
++
++  <div class="card">
++    <pre id="result"></pre>
++  </div>
++
++  <script>
++    const resultEl = document.getElementById('result');
++    document.getElementById('loadBtn').addEventListener('click', async () => {
++      const pageNum = document.getElementById('pageNum').value;
++      const pageSize = document.getElementById('pageSize').value;
++      const data = await MVP.apiGet('/crowdfunding/page', { pageNum, pageSize });
++      resultEl.textContent = JSON.stringify(data, null, 2);
++    });
++  </script>
++</body>
++</html>
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/donation-detail.html	2026-02-08 10:34:28
+@@ -0,0 +1,44 @@
++<!DOCTYPE html>
++<html lang="zh-CN">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>捐献项目详情</title>
++  <link rel="stylesheet" href="/mvp/mvp.css" />
++  <script src="/config.js"></script>
++  <script src="/mvp/mvp.js"></script>
++</head>
++<body>
++  <header>
++    <h1>捐献项目详情</h1>
++    <nav>
++      <a href="/mvp/donation-projects.html">项目列表</a>
++      <a href="/mvp/donation-new.html">发起捐献</a>
++    </nav>
++  </header>
++
++  <div class="card">
++    <label>crowdfundingId</label>
++    <input id="projectId" placeholder="例如 1" />
++    <button id="loadBtn">加载详情</button>
++  </div>
++
++  <div class="card">
++    <pre id="result"></pre>
++  </div>
++
++  <script>
++    const resultEl = document.getElementById('result');
++    const idInput = document.getElementById('projectId');
++    const idFromQuery = MVP.qs('id');
++    if (idFromQuery) idInput.value = idFromQuery;
++
++    document.getElementById('loadBtn').addEventListener('click', async () => {
++      const id = idInput.value.trim();
++      if (!id) return;
++      const data = await MVP.apiGet(`/crowdfunding/${id}`);
++      resultEl.textContent = JSON.stringify(data, null, 2);
++    });
++  </script>
++</body>
++</html>
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/donation-new.html	2026-02-08 10:34:42
+@@ -0,0 +1,68 @@
++<!DOCTYPE html>
++<html lang="zh-CN">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>发起捐献</title>
++  <link rel="stylesheet" href="/mvp/mvp.css" />
++  <script src="/config.js"></script>
++  <script src="/mvp/mvp.js"></script>
++</head>
++<body>
++  <header>
++    <h1>发起捐献</h1>
++    <nav>
++      <a href="/mvp/mvp-login.html">登录</a>
++      <a href="/mvp/donation-projects.html">项目列表</a>
++      <a href="/mvp/donation-mine.html">我的捐献</a>
++    </nav>
++  </header>
++
++  <div class="card">
++    <p class="small">支持捐献到众筹项目或指定猫咪（二选一）。需要登录 token。</p>
++    <label>crowdfundingId</label>
++    <input id="crowdfundingId" placeholder="可选" />
++    <label>catId</label>
++    <input id="catId" placeholder="可选" />
++    <label>amount</label>
++    <input id="amount" placeholder="例如 100.00" />
++    <label>paymentMethod</label>
++    <select id="paymentMethod">
++      <option value="WECHAT">WECHAT</option>
++      <option value="ALIPAY">ALIPAY</option>
++      <option value="OTHER">OTHER</option>
++    </select>
++    <label>transactionId</label>
++    <input id="transactionId" placeholder="可选" />
++    <label>isAnonymous</label>
++    <select id="isAnonymous">
++      <option value="false">false</option>
++      <option value="true">true</option>
++    </select>
++    <label>message</label>
++    <textarea id="message"></textarea>
++    <button id="submitBtn">提交捐献</button>
++  </div>
++
++  <div class="card">
++    <pre id="result"></pre>
++  </div>
++
++  <script>
++    const resultEl = document.getElementById('result');
++    document.getElementById('submitBtn').addEventListener('click', async () => {
++      const payload = {
++        crowdfundingId: document.getElementById('crowdfundingId').value || null,
++        catId: document.getElementById('catId').value || null,
++        amount: document.getElementById('amount').value || null,
++        paymentMethod: document.getElementById('paymentMethod').value || null,
++        transactionId: document.getElementById('transactionId').value || null,
++        isAnonymous: document.getElementById('isAnonymous').value === 'true',
++        message: document.getElementById('message').value || null
++      };
++      const data = await MVP.apiPost('/donation', payload);
++      resultEl.textContent = JSON.stringify(data, null, 2);
++    });
++  </script>
++</body>
++</html>
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/donation-mine.html	2026-02-08 10:34:51
+@@ -0,0 +1,37 @@
++<!DOCTYPE html>
++<html lang="zh-CN">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>我的捐献</title>
++  <link rel="stylesheet" href="/mvp/mvp.css" />
++  <script src="/config.js"></script>
++  <script src="/mvp/mvp.js"></script>
++</head>
++<body>
++  <header>
++    <h1>我的捐献</h1>
++    <nav>
++      <a href="/mvp/mvp-login.html">登录</a>
++      <a href="/mvp/donation-projects.html">项目列表</a>
++    </nav>
++  </header>
++
++  <div class="card">
++    <p class="small">需要登录 token（localStorage.user_token）。</p>
++    <button id="loadBtn">加载我的捐献</button>
++  </div>
++
++  <div class="card">
++    <pre id="result"></pre>
++  </div>
++
++  <script>
++    const resultEl = document.getElementById('result');
++    document.getElementById('loadBtn').addEventListener('click', async () => {
++      const data = await MVP.apiGet('/donation/my-donations');
++      resultEl.textContent = JSON.stringify(data, null, 2);
++    });
++  </script>
++</body>
++</html>
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/frontend/mvp/tip.html	2026-02-08 10:35:02
+@@ -0,0 +1,50 @@
++<!DOCTYPE html>
++<html lang="zh-CN">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>打赏（复用捐献）</title>
++  <link rel="stylesheet" href="/mvp/mvp.css" />
++  <script src="/config.js"></script>
++  <script src="/mvp/mvp.js"></script>
++</head>
++<body>
++  <header>
++    <h1>打赏（复用 donation）</h1>
++    <nav>
++      <a href="/mvp/mvp-login.html">登录</a>
++      <a href="/mvp/donation-new.html">捐献</a>
++    </nav>
++  </header>
++
++  <div class="card">
++    <p class="small">打赏记录写入 donation 表（catId + amount）。需要登录 token。</p>
++    <label>catId</label>
++    <input id="catId" placeholder="必填" />
++    <label>amount</label>
++    <input id="amount" placeholder="例如 20.00" />
++    <label>message</label>
++    <textarea id="message" placeholder="可选"></textarea>
++    <button id="submitBtn">提交打赏</button>
++  </div>
++
++  <div class="card">
++    <pre id="result"></pre>
++  </div>
++
++  <script>
++    const resultEl = document.getElementById('result');
++    document.getElementById('submitBtn').addEventListener('click', async () => {
++      const payload = {
++        catId: document.getElementById('catId').value || null,
++        amount: document.getElementById('amount').value || null,
++        message: document.getElementById('message').value || null,
++        isAnonymous: false,
++        paymentMethod: 'OTHER'
++      };
++      const data = await MVP.apiPost('/donation', payload);
++      resultEl.textContent = JSON.stringify(data, null, 2);
++    });
++  </script>
++</body>
++</html>
+--- /dev/null	2026-02-08 10:37:40
++++ deploy/REPORT_FIX.md	2026-02-08 10:36:57
+@@ -0,0 +1,1572 @@
++# 修复报告（无 Docker）
++
++## 0. 基线信息（按要求原始输出）
++
++### tree -L 3（或 ls -R）
++```
++.
++├── PATCHES
++│   ├── REPORT.md.20260208_095915.bak
++│   ├── REPORT.md.20260208_095928.bak
++│   ├── REPORT.md.20260208_100426.bak
++│   ├── REPORT.md.20260208_100707.bak
++│   └── REPORT.md.bak
++├── README.md
++├── REPORT.md
++├── REPORT_FIX.md
++├── admin-frontend
++│   ├── ADMIN_FRONTEND_SUMMARY.md
++│   ├── AGENTS.md
++│   ├── API接口问题修复说明.md
++│   ├── JavaScript变量重复声明问题修复.md
++│   ├── README.md
++│   ├── admin.log
++│   ├── api-test.html
++│   ├── css
++│   │   ├── common.css
++│   │   ├── components.css
++│   │   └── layout.css
++│   ├── dashboard.html
++│   ├── js
++│   │   ├── api.js
++│   │   ├── common.js
++│   │   └── components.js
++│   ├── layout.html
++│   ├── login.html
++│   ├── nul
++│   ├── pages
++│   │   ├── adoptions.html
++│   │   ├── cat-tags.html
++│   │   ├── cats.html
++│   │   ├── crowdfunding.html
++│   │   ├── dashboard.html
++│   │   ├── dynamics.html
++│   │   ├── finance.html
++│   │   ├── notifications.html
++│   │   ├── rescues.html
++│   │   ├── universities.html
++│   │   ├── users.html
++│   │   └── verifications.html
++│   ├── server.js
++│   ├── 修复完成总结.md
++│   ├── 启动管理后台.bat
++│   ├── 快速测试指南.md
++│   ├── 新版管理后台说明.md
++│   └── 管理员端完整检查报告.md
++├── backend
++│   ├── AGENTS.md
++│   ├── BOOT-INF
++│   │   └── classes
++│   ├── META-INF
++│   │   ├── MANIFEST.MF
++│   │   └── maven
++│   ├── application-override.yml
++│   ├── application-prod.yml
++│   ├── backend.log
++│   ├── cat-rescue.jar
++│   ├── logs
++│   │   ├── cat-rescue.log
++│   │   ├── cat-rescue.log.2026-02-01.0.gz
++│   │   └── startup.log
++│   ├── nul
++│   ├── static
++│   │   ├── assets
++│   │   ├── images
++│   │   ├── index.html
++│   │   ├── serve.json
++│   │   ├── server.js
++│   │   └── uploads
++│   └── 启动后端.bat
++├── cat_rescue.sql
++├── docker-compose.yml
++├── frontend
++│   ├── AGENTS.md
++│   ├── api-test.html
++│   ├── assets
++│   │   ├── 404--baNMUlS.js
++│   │   ├── 404-28Mlw5Os.js
++│   │   ├── 404-29olXP9x.js
++│   │   ├── 404-B0iprH5z.js
++│   │   ├── 404-B2n-1NWe.js
++│   │   ├── 404-Bo_eTBf_.js
++│   │   ├── 404-CDlHsYuM.js
++│   │   ├── 404-CGrDasB-.js
++│   │   ├── 404-CITq5gO-.js
++│   │   ├── 404-CQCnUwQv.js
++│   │   ├── 404-D3l_9LhU.js
++│   │   ├── 404-Do6UDUI3.js
++│   │   ├── 404-T_LEGpPK.css
++│   │   ├── _plugin-vue_export-helper-DlAUqK2U.js
++│   │   ├── adoption-CMWGZ8Ww.js
++│   │   ├── adoption-CiY7VzMz.js
++│   │   ├── adoption-CjP0C-fO.js
++│   │   ├── adoption-CxJZ4nw3.js
++│   │   ├── adoption-DG_GffzV.js
++│   │   ├── adoption-DVMSQmPI.js
++│   │   ├── adoption-DdVNeMZk.js
++│   │   ├── adoption-VkjgPlRC.js
++│   │   ├── adoption-cHGKrDi-.js
++│   │   ├── adoption-eug5KJCB.js
++│   │   ├── adoption-fmvwDVLD.js
++│   │   ├── adoption-uR_ohCBk.js
++│   │   ├── adoptions-B2Ar8u13.js
++│   │   ├── adoptions-BK8o7ncW.js
++│   │   ├── adoptions-BNXFBnOx.js
++│   │   ├── adoptions-Bl7LKSlO.js
++│   │   ├── adoptions-CCncOHcP.js
++│   │   ├── adoptions-CUbw4jRp.js
++│   │   ├── adoptions-CnL_chET.js
++│   │   ├── adoptions-DFPNDAaK.css
++│   │   ├── adoptions-DbUG_Ilj.js
++│   │   ├── adoptions-DmLimPwx.js
++│   │   ├── adoptions-_WIBGWTC.js
++│   │   ├── adoptions-c1sAb4v_.js
++│   │   ├── adoptions-v6DF-5hz.js
++│   │   ├── apply-BJeWAkYF.js
++│   │   ├── apply-BTVSbSHy.js
++│   │   ├── apply-BizmStjH.js
++│   │   ├── apply-C1Y9WrOs.js
++│   │   ├── apply-C328kp1R.js
++│   │   ├── apply-CjXI-SBt.js
++│   │   ├── apply-CqBuf6Cq.js
++│   │   ├── apply-D1n7VuAI.js
++│   │   ├── apply-DJ7BEJQn.css
++│   │   ├── apply-DR2ULVyp.js
++│   │   ├── apply-DZbMRvGC.js
++│   │   ├── apply-PfjI0gcI.js
++│   │   ├── apply-hrpZb84r.js
++│   │   ├── cat-B1hHPUXx.js
++│   │   ├── cat-B7UR_3So.js
++│   │   ├── cat-BFi__BXU.js
++│   │   ├── cat-BNSW1wqJ.js
++│   │   ├── cat-Bh7QlOGh.js
++│   │   ├── cat-Ck7rnad3.js
++│   │   ├── cat-CmcS0UDJ.js
++│   │   ├── cat-CxkuW-o2.js
++│   │   ├── cat-DHVeo7bt.js
++│   │   ├── cat-DT66Z2d1.js
++│   │   ├── cat-DwVSNbqL.js
++│   │   ├── cat-YjEz8_D4.js
++│   │   ├── cat-tags-BD3tPIGQ.js
++│   │   ├── cat-tags-COUY-BoZ.js
++│   │   ├── cat-tags-CVAf_4lH.js
++│   │   ├── cat-tags-CZEd4LAn.js
++│   │   ├── cat-tags-Ci4cWEOp.js
++│   │   ├── cat-tags-Cq_Nh0_F.js
++│   │   ├── cat-tags-D1jAf0kg.js
++│   │   ├── cat-tags-D3pu3em3.js
++│   │   ├── cat-tags-DQDD5ybe.css
++│   │   ├── cat-tags-Da_X5MKY.js
++│   │   ├── cat-tags-OChO5vZv.js
++│   │   ├── cat-tags-byrru6iy.js
++│   │   ├── cats-B7ug0IAm.js
++│   │   ├── cats-BvOrxlM-.css
++│   │   ├── cats-C92_l_L1.js
++│   │   ├── cats-CE03TWrb.js
++│   │   ├── cats-COBABHLQ.js
++│   │   ├── cats-COjVII7D.js
++│   │   ├── cats-CQmQgqAO.js
++│   │   ├── cats-CxUDCHuS.js
++│   │   ├── cats-DGhpBXvO.js
++│   │   ├── cats-Dp30FkeR.js
++│   │   ├── cats-G_zNqHDp.js
++│   │   ├── cats-K8hA_Wl8.js
++│   │   ├── cats-Sl-taccJ.js
++│   │   ├── community-AqAIWdcB.js
++│   │   ├── community-B9PPt_GH.js
++│   │   ├── community-BNkHmhbM.js
++│   │   ├── community-Chh_JOHn.js
++│   │   ├── community-CkBhywlv.js
++│   │   ├── community-Czd4e_PL.js
++│   │   ├── community-D3wOGpoH.js
++│   │   ├── community-DB-126D4.js
++│   │   ├── community-DIVrjsWr.js
++│   │   ├── community-EhrKXgFR.js
++│   │   ├── community-hPewukwB.js
++│   │   ├── community-zI1o8fiI.js
++│   │   ├── crowdfunding-BbC-EY3B.js
++│   │   ├── crowdfunding-BfOaLfyL.js
++│   │   ├── crowdfunding-BnJ3bsQL.js
++│   │   ├── crowdfunding-Bq_0aBTd.css
++│   │   ├── crowdfunding-BztTT10r.js
++│   │   ├── crowdfunding-C7Tq9LI8.js
++│   │   ├── crowdfunding-C7xfDids.js
++│   │   ├── crowdfunding-CAahl_bE.js
++│   │   ├── crowdfunding-CAk8lJtl.js
++│   │   ├── crowdfunding-CEbXX_i7.js
++│   │   ├── crowdfunding-DQ1Rz1o1.js
++│   │   ├── crowdfunding-Ks94AgKf.js
++│   │   ├── dashboard-BRdmK3-r.js
++│   │   ├── dashboard-BRkRmsoc.js
++│   │   ├── dashboard-Bxq2GEJ1.js
++│   │   ├── dashboard-CAMYKrR6.js
++│   │   ├── dashboard-CRMn0OQD.js
++│   │   ├── dashboard-CV6rzKMC.js
++│   │   ├── dashboard-CoIMV5Sy.js
++│   │   ├── dashboard-D1W_5jYh.js
++│   │   ├── dashboard-DEix7J6E.js
++│   │   ├── dashboard-DMchsrLp.js
++│   │   ├── dashboard-DbSFDXCu.js
++│   │   ├── dashboard-QPfUC7xC.js
++│   │   ├── dashboard-UdtMDklg.css
++│   │   ├── dashboard-w5ZDsruu.css
++│   │   ├── detail-B-JmCFZv.js
++│   │   ├── detail-B2rO7qG_.js
++│   │   ├── detail-B5yRa4cO.js
++│   │   ├── detail-BHAg7W6v.js
++│   │   ├── detail-BHEIAJLZ.js
++│   │   ├── detail-BIjFMtQL.js
++│   │   ├── detail-BM_Tf6rX.js
++│   │   ├── detail-BONGwW6F.js
++│   │   ├── detail-BcViFKY5.js
++│   │   ├── detail-BdiZMMhP.js
++│   │   ├── detail-BdrMZ6ov.js
++│   │   ├── detail-BeSi0n3G.css
++│   │   ├── detail-BueL_yDK.js
++│   │   ├── detail-BwCBXfFc.css
++│   │   ├── detail-C4bBd7MQ.js
++│   │   ├── detail-C8cWWBjS.js
++│   │   ├── detail-CGZvQFGH.js
++│   │   ├── detail-CT2INzAE.js
++│   │   ├── detail-CZqsWh9I.js
++│   │   ├── detail-Cds9H7jr.js
++│   │   ├── detail-CeIF31zc.js
++│   │   ├── detail-CjDezn49.js
++│   │   ├── detail-CkUIU0wt.js
++│   │   ├── detail-ClGIz3nW.js
++│   │   ├── detail-Co6uFV4P.css
++│   │   ├── detail-CpW-ZxkK.js
++│   │   ├── detail-D0Akfe3L.js
++│   │   ├── detail-D2ri_hqS.js
++│   │   ├── detail-DKJwJnlR.js
++│   │   ├── detail-DVG2_N6_.js
++│   │   ├── detail-DXggUf0p.js
++│   │   ├── detail-DaNH3U2e.js
++│   │   ├── detail-DaOK-l0D.js
++│   │   ├── detail-DewfCn5n.js
++│   │   ├── detail-Dl4bEloo.js
++│   │   ├── detail-DzUEP37k.js
++│   │   ├── detail-F7jovjbi.js
++│   │   ├── detail-OUkH1qyB.js
++│   │   ├── detail-R_1LPNGQ.css
++│   │   ├── detail-iK8iFcDl.css
++│   │   ├── detail-vj1h-xmu.js
++│   │   ├── dynamics-B8sZMEzr.js
++│   │   ├── dynamics-BIUPVvua.js
++│   │   ├── dynamics-BSRBL80o.css
++│   │   ├── dynamics-BSXoqs29.js
++│   │   ├── dynamics-BklWifEC.js
++│   │   ├── dynamics-BuLnUnce.js
++│   │   ├── dynamics-C9lfJKMx.js
++│   │   ├── dynamics-ClLksIx0.js
++│   │   ├── dynamics-CmkAOY7D.js
++│   │   ├── dynamics-DJcd-s5t.js
++│   │   ├── dynamics-Dhqwo8bA.js
++│   │   ├── dynamics-QiFxRnCR.js
++│   │   ├── dynamics-hPdJUX6r.js
++│   │   ├── el-badge-BWN_0xb6.css
++│   │   ├── el-card-fwQOLwdi.css
++│   │   ├── el-checkbox-DIj50LEB.css
++│   │   ├── el-col-Ds2mGN2S.css
++│   │   ├── el-descriptions-item-o9ObloqJ.css
++│   │   ├── el-divider-BUtF_RGI.css
++│   │   ├── el-empty-D4ZqTl4F.css
++│   │   ├── el-form-item-BWkJzdQ_.css
++│   │   ├── el-image-viewer-gjGgbSV7.css
++│   │   ├── el-input-number-D6iOyBgb.css
++│   │   ├── el-input-tPmZxDKr.css
++│   │   ├── el-link-B58a4a3I.css
++│   │   ├── el-loading-C5IeuJ3V.css
++│   │   ├── el-overlay-uHqKdL1G.css
++│   │   ├── el-pagination-BNQcHhjS.css
++│   │   ├── el-progress-Dw9yTa91.css
++│   │   ├── el-radio-button-CSkroacn.css
++│   │   ├── el-radio-group-lhPfk_Qw.css
++│   │   ├── el-select-DC6_bRTH.css
++│   │   ├── el-table-column-CKoPG0Y8.css
++│   │   ├── el-tag-DljBBxJR.css
++│   │   ├── el-timeline-item-BvbJTz1y.css
++│   │   ├── el-tooltip-l0sNRNKZ.js
++│   │   ├── el-upload-q8uObtwj.css
++│   │   ├── element-plus-B9MrEl8w.js
++│   │   ├── element-plus-o-j_G_-z.js
++│   │   ├── finance-BAYqADCl.js
++│   │   ├── finance-BD5wpG4g.css
++│   │   ├── finance-BFR1OC-C.js
++│   │   ├── finance-CFzMrBJ5.js
++│   │   ├── finance-CStqxaTn.js
++│   │   ├── finance-Cnu9C3pH.js
++│   │   ├── finance-D-K3kWDR.js
++│   │   ├── finance-D8BLPV9z.js
++│   │   ├── finance-DDTU0HYd.js
++│   │   ├── finance-O7Szauvn.js
++│   │   ├── finance-iDTEDZjq.js
++│   │   ├── finance-qpJnXvnG.js
++│   │   ├── index--sddL_DG.js
++│   │   ├── index-1aIGjDF_.js
++│   │   ├── index-B0qf3IHr.js
++│   │   ├── index-B2-6bV7b.js
++│   │   ├── index-B8C77IZt.js
++│   │   ├── index-B9Tu-n-f.css
++│   │   ├── index-BBvc-XMN.css
++│   │   ├── index-BCcbQRi_.js
++│   │   ├── index-BDuzG06j.js
++│   │   ├── index-BFgFkUhR.js
++│   │   ├── index-BI_Q4cjo.js
++│   │   ├── index-BK2VXG0n.js
++│   │   ├── index-BKVCRXr6.js
++│   │   ├── index-BP7Cpww0.js
++│   │   ├── index-BQGkfMsO.js
++│   │   ├── index-BT7ZNRpg.js
++│   │   ├── index-BYydqmxs.js
++│   │   ├── index-BaGYIqbM.js
++│   │   ├── index-BeNAVYP0.js
++│   │   ├── index-BeZeSF5x.js
++│   │   ├── index-BiU8_aI7.js
++│   │   ├── index-BlMIfOB5.js
++│   │   ├── index-BnQMA19Z.css
++│   │   ├── index-BrqdZ9MV.js
++│   │   ├── index-Bvbank6p.js
++│   │   ├── index-ByXUt1Ht.js
++│   │   ├── index-C1Gu1ldM.js
++│   │   ├── index-C2zwZH3m.js
++│   │   ├── index-C4algVp-.js
++│   │   ├── index-C7HjTzea.js
++│   │   ├── index-C7QMbvNI.js
++│   │   ├── index-C8fwhNLU.js
++│   │   ├── index-CBIOQEZf.css
++│   │   ├── index-CQ1_QnL5.js
++│   │   ├── index-Ca3SNM_l.js
++│   │   ├── index-CgNOuK1N.js
++│   │   ├── index-Cj1do-4s.js
++│   │   ├── index-CjZhQ3nS.js
++│   │   ├── index-CoRtiVqK.js
++│   │   ├── index-CwEf16k7.js
++│   │   ├── index-D2CWAnzF.js
++│   │   ├── index-D40KseiW.js
++│   │   ├── index-D4Btb-iE.js
++│   │   ├── index-D9G9YzHt.css
++│   │   ├── index-DBDT4uYO.js
++│   │   ├── index-DH5c_PcU.js
++│   │   ├── index-DIIZ4_FJ.js
++│   │   ├── index-DYmilcEN.js
++│   │   ├── index-Dj1k6lBS.js
++│   │   ├── index-DnjN8ieL.js
++│   │   ├── index-DsNOaJLU.js
++│   │   ├── index-Gupr2Qtl.js
++│   │   ├── index-JaZdKMuh.js
++│   │   ├── index-QtCBLM6r.js
++│   │   ├── index-SM0C544p.js
++│   │   ├── index-TOGuZ6Gu.js
++│   │   ├── index-YaKkPaKk.js
++│   │   ├── index-Z-ZaoBYZ.js
++│   │   ├── index-cLv6ztlq.js
++│   │   ├── index-k_aWam8k.js
++│   │   ├── index-lz1FAUu8.js
++│   │   ├── index-ol3VzvfB.js
++│   │   ├── index-t6b5srCu.js
++│   │   ├── index-te9N7g2Y.js
++│   │   ├── index-zydmklbY.js
++│   │   ├── layout-BErD20-2.js
++│   │   ├── layout-Ba3nNnOZ.js
++│   │   ├── layout-BeXvC3fC.js
++│   │   ├── layout-CC5sDjoO.js
++│   │   ├── layout-CGTEgh_C.js
++│   │   ├── layout-CTPkLgK-.js
++│   │   ├── layout-CahFuOv0.css
++│   │   ├── layout-Cfs5kHj4.js
++│   │   ├── layout-CmQGZUZk.js
++│   │   ├── layout-DNWE8lsa.css
++│   │   ├── layout-Dwa5NzYW.js
++│   │   ├── layout-I3Ju9RwM.js
++│   │   ├── layout-Z-RkrRNs.js
++│   │   ├── layout-ixQb5h3p.js
++│   │   ├── list-B-zu6xVz.js
++│   │   ├── list-BAV91x9H.js
++│   │   ├── list-BAd66jpt.js
++│   │   ├── list-BM6nIiCi.js
++│   │   ├── list-BRN_ufzC.js
++│   │   ├── list-BYEgBSJ1.js
++│   │   ├── list-Be42q6qZ.js
++│   │   ├── list-BnLEAQex.js
++│   │   ├── list-BsJem37y.js
++│   │   ├── list-BzwMAolz.js
++│   │   ├── list-C27jyUwZ.css
++│   │   ├── list-C6mS0HuM.css
++│   │   ├── list-C9vU5UNw.js
++│   │   ├── list-CA2QIO3p.js
++│   │   ├── list-CAfNJiB0.js
++│   │   ├── list-CH6MQsX9.js
++│   │   ├── list-CPCocKt6.js
++│   │   ├── list-CTWhVlC8.js
++│   │   ├── list-CfGk74S1.js
++│   │   ├── list-ChtJ9ze3.js
++│   │   ├── list-CiB2_dsV.css
++│   │   ├── list-CsA4MJgw.js
++│   │   ├── list-CwrWcPIy.js
++│   │   ├── list-DDJKuXnP.js
++│   │   ├── list-DIOaMdVe.js
++│   │   ├── list-DIzxUJzS.js
++│   │   ├── list-DJTRv8Dj.css
++│   │   ├── list-DM51Vhnu.css
++│   │   ├── list-DYEUj21o.css
++│   │   ├── list-DdSF0hia.js
++│   │   ├── list-De9MRS2m.js
++│   │   ├── list-DqJfd2HY.js
++│   │   ├── list-DqqS4-iG.js
++│   │   ├── list-DsttkqMS.js
++│   │   ├── list-KlG0iGbX.js
++│   │   ├── list-LXGJRGVB.js
++│   │   ├── list-Lway8N45.js
++│   │   ├── list-YxrLKoSD.js
++│   │   ├── list-aKeslsYs.js
++│   │   ├── list-hhsuxR4p.js
++│   │   ├── list-roWj8-7Y.js
++│   │   ├── list-sES8N36g.js
++│   │   ├── login-0NJPAjYM.js
++│   │   ├── login-5DrROgV0.js
++│   │   ├── login-B5YQ42Zr.css
++│   │   ├── login-BLBKis2t.js
++│   │   ├── login-BZPQMBXT.css
++│   │   ├── login-Cd9CZ2mo.js
++│   │   ├── login-CtzQ2cfg.js
++│   │   ├── login-DIBi6VDb.js
++│   │   ├── login-DVYCgaKb.js
++│   │   ├── login-DYKvM-bx.js
++│   │   ├── login-Dzlzp2m-.js
++│   │   ├── login-GWPlTyEW.js
++│   │   ├── login-OOmYdJkL.js
++│   │   ├── login-OSfBRBfc.js
++│   │   ├── my-BIbcXChr.js
++│   │   ├── my-BQgaUGm-.js
++│   │   ├── my-BXrcXQ9I.js
++│   │   ├── my-BuccqMLt.css
++│   │   ├── my-C1_rGSGG.js
++│   │   ├── my-CEpycpQo.js
++│   │   ├── my-CJR_Dw9P.js
++│   │   ├── my-CbO5_4C-.js
++│   │   ├── my-CiTK11YC.js
++│   │   ├── my-CpkQOgV8.js
++│   │   ├── my-DNbPBbAU.js
++│   │   ├── my-DXGQtCuo.js
++│   │   ├── my-DxuX_-Uj.js
++│   │   ├── notification-B4kEBSNC.js
++│   │   ├── notification-BVfS3hTn.js
++│   │   ├── notification-C5-tQjV5.js
++│   │   ├── notification-Cesp0kKj.js
++│   │   ├── notification-Czc7qxhh.js
++│   │   ├── notification-D3HbaKbv.js
++│   │   ├── notification-DObBmXYi.js
++│   │   ├── notification-DY3IOnEd.js
++│   │   ├── notification-DaBknuMT.js
++│   │   ├── notification-DroLapJk.js
++│   │   ├── notification-aPpcSc-s.js
++│   │   ├── notifications-ACEtb9sY.js
++│   │   ├── notifications-BaBxdlop.js
++│   │   ├── notifications-Bp4yn636.js
++│   │   ├── notifications-CZFS_L_U.js
++│   │   ├── notifications-Chsa1Nl4.js
++│   │   ├── notifications-DNxuEz_H.css
++│   │   ├── notifications-DsKr-DbA.js
++│   │   ├── notifications-DxqicTjd.js
++│   │   ├── notifications-ISMU7-u7.js
++│   │   ├── notifications-P3yURfqg.js
++│   │   ├── notifications-R_OSO6UU.js
++│   │   ├── notifications-ubxKxkzJ.js
++│   │   ├── profile-BM_NAdfr.js
++│   │   ├── profile-Bm2Nw2vb.css
++│   │   ├── profile-CCB-Pmuq.js
++│   │   ├── profile-C_Aqnpnt.js
++│   │   ├── profile-CcB5aJhR.js
++│   │   ├── profile-Cg3Fe27S.js
++│   │   ├── profile-CjbDAEUJ.css
++│   │   ├── profile-D5HoZgfE.js
++│   │   ├── profile-DSuGEjLL.js
++│   │   ├── profile-Dv5dm9_t.js
++│   │   ├── profile-EULMiEB6.js
++│   │   ├── profile-HKK3feR-.js
++│   │   ├── profile-aQV4DTK_.js
++│   │   ├── profile-k8PRkcFQ.js
++│   │   ├── publish-0B6aPEyx.js
++│   │   ├── publish-6j-ShRGN.js
++│   │   ├── publish-B6dxvGfH.js
++│   │   ├── publish-BNo6pCu5.js
++│   │   ├── publish-BSBam8yK.js
++│   │   ├── publish-BhTfHwau.css
++│   │   ├── publish-BtEgJz0V.js
++│   │   ├── publish-C3s_l0RV.js
++│   │   ├── publish-C61PRq3d.js
++│   │   ├── publish-CCC1E7U_.js
++│   │   ├── publish-CVaKFtcd.js
++│   │   ├── publish-CW-OQiuw.js
++│   │   ├── publish-C_uQ8JTs.js
++│   │   ├── publish-Cl-E1SLJ.js
++│   │   ├── publish-D4_DahGP.js
++│   │   ├── publish-D9H4oIhv.js
++│   │   ├── publish-DCNMYsX3.js
++│   │   ├── publish-DI1B7523.js
++│   │   ├── publish-DOavOoYh.js
++│   │   ├── publish-DXgdqvUG.css
++│   │   ├── publish-DbRkYaS3.js
++│   │   ├── publish-DpwfsBzO.js
++│   │   ├── publish-DqBdqdfD.js
++│   │   ├── publish-DtLcVmi6.js
++│   │   ├── publish-aZQqJqJi.js
++│   │   ├── publish-eDZjxJad.js
++│   │   ├── register-9u80BRhS.js
++│   │   ├── register-BB1ngGKf.js
++│   │   ├── register-BVz-42mk.js
++│   │   ├── register-BahgS4Y2.css
++│   │   ├── register-COOE4xes.js
++│   │   ├── register-CuhzekmD.js
++│   │   ├── register-Cw3hblXO.js
++│   │   ├── register-DK4l04fd.js
++│   │   ├── register-DZryf8Ku.js
++│   │   ├── register-Dfm_Pr6O.js
++│   │   ├── register-DhitHBN6.js
++│   │   ├── register-FYmv8PYr.js
++│   │   ├── register-gxlCqZmp.js
++│   │   ├── rescue-BLI-UUW_.js
++│   │   ├── rescue-BTrqwbQs.js
++│   │   ├── rescue-B_3geFeJ.js
++│   │   ├── rescue-BfvfAiuu.js
++│   │   ├── rescue-BgFAj9bP.js
++│   │   ├── rescue-Clc9l849.js
++│   │   ├── rescue-CloAfOhb.js
++│   │   ├── rescue-Cluz7_aJ.js
++│   │   ├── rescue-DAFdk1R_.js
++│   │   ├── rescue-DECkZGOU.js
++│   │   ├── rescue-DQ86LqSP.js
++│   │   ├── rescue-asa8I2FB.js
++│   │   ├── rescues-4__s_sJA.js
++│   │   ├── rescues-B2KZdLpk.js
++│   │   ├── rescues-B2QngdPd.js
++│   │   ├── rescues-BGi68crS.js
++│   │   ├── rescues-BHptdM3k.js
++│   │   ├── rescues-BUEAtbtW.js
++│   │   ├── rescues-CPBftpkb.js
++│   │   ├── rescues-DDfzsZ_T.js
++│   │   ├── rescues-Dk5449cQ.js
++│   │   ├── rescues-e6ASUFHB.js
++│   │   ├── rescues-iX73SO3l.js
++│   │   ├── rescues-spEzC6Fl.css
++│   │   ├── rescues-xXb8g9rn.js
++│   │   ├── universities-0tL6kaJH.js
++│   │   ├── universities-B9pskzJg.js
++│   │   ├── universities-BkerddsD.js
++│   │   ├── universities-C0yhnoQf.css
++│   │   ├── universities-CHuIuoL5.js
++│   │   ├── universities-CRUL3s_H.js
++│   │   ├── universities-CjvjJiZM.js
++│   │   ├── universities-Cyh3tREU.js
++│   │   ├── universities-CzRtf8BY.js
++│   │   ├── universities-D2W8IwaH.js
++│   │   ├── universities-Ds7Yi4UB.js
++│   │   ├── universities-DsXW6mHf.js
++│   │   ├── users-7-Y_dvjV.js
++│   │   ├── users-B0OL_xP8.js
++│   │   ├── users-BF24uGdZ.js
++│   │   ├── users-BbjfzFHJ.css
++│   │   ├── users-BhP7txGO.js
++│   │   ├── users-Bxf5GH1t.js
++│   │   ├── users-CRFj0g4o.js
++│   │   ├── users-Cn5Io2Jk.js
++│   │   ├── users-Cw59rTtM.js
++│   │   ├── users-DCzT3ySi.js
++│   │   ├── users-DNQM7Hz0.js
++│   │   ├── users-oJCLaSD0.js
++│   │   ├── users-v5VLNE8k.js
++│   │   ├── utils-CCXpdI6d.js
++│   │   ├── utils-DtAJ10D1.js
++│   │   ├── verifications-59yfvq-K.css
++│   │   ├── verifications-B5vNM-gk.js
++│   │   ├── verifications-BSDEA4tV.js
++│   │   ├── verifications-BSsXGnzL.js
++│   │   ├── verifications-Ba4wgz1C.js
++│   │   ├── verifications-BkbEYjzX.js
++│   │   ├── verifications-CqZRSEhf.js
++│   │   ├── verifications-DWrijya1.js
++│   │   ├── verifications-DZgpKCvu.js
++│   │   ├── verifications-Dfnugfqi.js
++│   │   ├── verifications-Ds48watt.js
++│   │   ├── verifications-M5gdGE4h.js
++│   │   ├── vue-vendor-L7KxampG.js
++│   │   ├── zh-cn-qMXBDFIZ.js
++│   │   └── zh-cn-zKIttnm5.js
++│   ├── frontend.log
++│   ├── images
++│   ├── index.html
++│   ├── serve.json
++│   ├── server.js
++│   ├── uploads
++│   │   ├── avatar
++│   │   ├── cats
++│   │   ├── dynamic
++│   │   └── rescue
++│   └── 启动前端.bat
++├── init-db.bat
++├── nginx
++│   ├── admin.conf
++│   ├── frontend.conf
++│   └── nginx.test.conf
++├── nul
++├── start.bat.old
++├── stop.bat.old
++├── uploads
++│   ├── avatar
++│   │   ├── admin.jpg
++│   │   ├── lisi.jpg
++│   │   ├── volunteer1.jpg
++│   │   ├── wangwu.jpg
++│   │   ├── zhangsan.jpg
++│   │   └── zhaoliu.jpg
++│   ├── cats
++│   │   ├── cat1.jpg
++│   │   ├── cat10.jpg
++│   │   ├── cat10_1.jpg
++│   │   ├── cat10_2.jpg
++│   │   ├── cat1_1.jpg
++│   │   ├── cat1_2.jpg
++│   │   ├── cat1_3.jpg
++│   │   ├── cat2.jpg
++│   │   ├── cat2_1.jpg
++│   │   ├── cat2_2.jpg
++│   │   ├── cat3.jpg
++│   │   ├── cat3_1.jpg
++│   │   ├── cat3_2.jpg
++│   │   ├── cat4.jpg
++│   │   ├── cat4_1.jpg
++│   │   ├── cat4_2.jpg
++│   │   ├── cat4_3.jpg
++│   │   ├── cat5.jpg
++│   │   ├── cat5_1.jpg
++│   │   ├── cat5_2.jpg
++│   │   ├── cat6.jpg
++│   │   ├── cat6_1.jpg
++│   │   ├── cat6_2.jpg
++│   │   ├── cat7.jpg
++│   │   ├── cat7_1.jpg
++│   │   ├── cat7_2.jpg
++│   │   ├── cat8.jpg
++│   │   ├── cat8_1.jpg
++│   │   ├── cat8_2.jpg
++│   │   ├── cat9.jpg
++│   │   ├── cat9_1.jpg
++│   │   └── cat9_2.jpg
++│   ├── dynamic
++│   │   ├── d1.jpg
++│   │   ├── d2.jpg
++│   │   ├── d3.jpg
++│   │   ├── d4.jpg
++│   │   ├── d5.jpg
++│   │   ├── dynamic1.jpg
++│   │   ├── dynamic2.jpg
++│   │   ├── dynamic3.jpg
++│   │   ├── dynamic4.jpg
++│   │   ├── dynamic5.jpg
++│   │   └── dynamic6.jpg
++│   └── rescue
++│       ├── rescue1.jpg
++│       ├── rescue2.jpg
++│       ├── rescue3.jpg
++│       └── rescue4.jpg
++├── 一键启动.bat
++├── 修复后端连接.bat
++├── 停止服务.bat
++├── 启动指南.txt
++├── 启动脚本完善说明.md
++├── 启动说明.md
++├── 完整启动.bat
++├── 快速访问指南.txt
++├── 查看状态.bat
++├── 登录问题诊断.md
++├── 社区动态说明.md
++├── 管理后台使用说明.md
++├── 系统完善方案.md
++└── 閮ㄧ讲璇存槑.md
++
++30 directories, 650 files
++```
++
++### cat backend/application-prod.yml
++```
++# 生产环境配置
++spring:
++  # 静态资源配置 - 让后端同时提供前端页面
++  web:
++    resources:
++      static-locations: classpath:/static/,file:../frontend/,file:../uploads/
++      add-mappings: true
++  mvc:
++    static-path-pattern: /**
++
++  # 数据源配置
++  datasource:
++    url: jdbc:mysql://localhost:3306/cat_rescue?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
++    username: root
++    password: 123456
++
++# CORS配置
++cors:
++  allowed-origins: http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001
++
++# 文件上传路径
++file:
++  upload-path: ../uploads/
++
++# JWT配置
++jwt:
++  secret: cat-rescue-jwt-secret-key-2024-very-long-string-for-security-purpose-32chars
++
++# 日志级别 - 生产环境减少日志
++logging:
++  level:
++    com.campus.cat: info
++    com.campus.cat.module.*.mapper: warn
++```
++
++### grep -R "localhost:8080" -n ./frontend ./admin-frontend
++```
++./frontend/server.js:32:      headers: { ...req.headers, host: 'localhost:8080' }
++./frontend/AGENTS.md:13:- `server.js` proxies `/api/*` to `http://localhost:8080`.
++./admin-frontend/api-test.html:99:        const API_BASE = 'http://localhost:8080/api';
++./admin-frontend/api-test.html:120:                resultEl.textContent = `错误: ${error.message}\n\n请确保后端服务已启动在 http://localhost:8080`;
++./admin-frontend/新版管理后台说明.md:6:确保后端服务已经启动并运行在 `http://localhost:8080`
++./admin-frontend/新版管理后台说明.md:126:1. 检查后端服务是否运行：访问 `http://localhost:8080/api/health`
++./admin-frontend/js/api.js:2:const API_BASE = 'http://localhost:8080/api';
++./admin-frontend/API接口问题修复说明.md:37:   - 前端请求：`http://localhost:8080/api/admin/users/statistics`
++./admin-frontend/API接口问题修复说明.md:38:   - 后端实际：`http://localhost:8080/api/users/statistics`
++./admin-frontend/API接口问题修复说明.md:204:   - 使用Swagger UI查看：`http://localhost:8080/swagger-ui.html`
++./admin-frontend/login.html:139:        const API_BASE = 'http://localhost:8080/api';
++./admin-frontend/dashboard.html:220:        const API_BASE = 'http://localhost:8080/api';
++./admin-frontend/AGENTS.md:13:- API base URL is hardcoded in `js/api.js` as `http://localhost:8080/api`.
++```
++
++### grep -R "/api" -n ./frontend ./admin-frontend | head
++```
++./frontend/api-test.html:129:                const response = await fetch('/api/users/login', {
++./frontend/api-test.html:212:                { name: '猫咪列表', url: '/api/cats/page?current=1&size=10' },
++./frontend/api-test.html:213:                { name: '社区动态', url: '/api/dynamics/page?current=1&size=10' },
++./frontend/api-test.html:214:                { name: '热门话题', url: '/api/community/hot-topics?limit=5' },
++./frontend/api-test.html:215:                { name: '活跃用户', url: '/api/community/active-users?limit=5' },
++./frontend/api-test.html:216:                { name: '用户信息', url: '/api/users/info' },
++./frontend/api-test.html:217:                { name: '用户统计', url: '/api/users/stats' },
++./frontend/api-test.html:218:                { name: '猫咪统计', url: '/api/cats/stats' },
++./frontend/api-test.html:219:                { name: '领养列表', url: '/api/adoptions/page?current=1&size=10' },
++./frontend/api-test.html:220:                { name: '救助信息', url: '/api/rescue-info/page?current=1&size=10' }
++```
++
++### ls -lah backend/*.jar
++```
++-rw-rw-rw-@ 1 yuchenxu  staff    59M Feb  1 08:55 backend/cat-rescue.jar
++```
++
++### 端口占用
++```
++COMMAND    PID     USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
++ControlCe 1057 yuchenxu   10u  IPv4 0x15beb8fa2033377b      0t0  TCP *:5000 (LISTEN)
++ControlCe 1057 yuchenxu   11u  IPv6 0x53c3e640d313fbfd      0t0  TCP *:5000 (LISTEN)
++COMMAND   PID     USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
++Python  65008 yuchenxu    7u  IPv4 0x4ddca8d30471f395      0t0  TCP *:5001 (LISTEN)
++Python  65008 yuchenxu   10u  IPv4 0x4ddca8d30471f395      0t0  TCP *:5001 (LISTEN)
++Python  91805 yuchenxu    7u  IPv4 0x4ddca8d30471f395      0t0  TCP *:5001 (LISTEN)
++COMMAND   PID     USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
++java    96877 yuchenxu   18u  IPv6 0xb7978d1ccdff2181      0t0  TCP *:8080 (LISTEN)
++```
++
++## 1. 后端配置可配置化
++
++### application-prod.yml diff
++```diff
++--- deploy/PATCHES/application-prod.yml.20260208_102329.bak	2026-02-08 10:23:29
+++++ deploy/backend/application-prod.yml	2026-02-08 10:23:42
++@@ -1,4 +1,7 @@
++ # 生产环境配置
+++server:
+++  port: ${APP_PORT:8080}
+++
++ spring:
++   # 静态资源配置 - 让后端同时提供前端页面
++   web:
++@@ -10,13 +13,13 @@
++ 
++   # 数据源配置
++   datasource:
++-    url: jdbc:mysql://localhost:3306/cat_rescue?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
++-    username: root
++-    password: 123456
+++    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:cat_rescue}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+++    username: ${DB_USER:root}
+++    password: ${DB_PASS:123456}
++ 
++ # CORS配置
++ cors:
++-  allowed-origins: http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001
+++  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001}
++ 
++ # 文件上传路径
++ file:
++```
++
++### 新增 application-local.yml
++```
++# 本地开发配置（Mac/Windows）
++server:
++  port: ${APP_PORT:8080}
++
++spring:
++  web:
++    resources:
++      static-locations: classpath:/static/,file:../frontend/,file:../uploads/
++      add-mappings: true
++  mvc:
++    static-path-pattern: /**
++
++  datasource:
++    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:cat_rescue}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
++    username: ${DB_USER:root}
++    password: ${DB_PASS:123456}
++
++cors:
++  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001}
++
++file:
++  upload-path: ../uploads/
++
++jwt:
++  secret: cat-rescue-jwt-secret-key-2024-very-long-string-for-security-purpose-32chars
++
++logging:
++  level:
++    com.campus.cat: info
++    com.campus.cat.module.*.mapper: warn
++```
++
++### 环境变量说明
++- APP_PORT: 后端端口（默认 8080）
++- DB_HOST/DB_PORT/DB_NAME: 数据库连接（默认 127.0.0.1/3306/cat_rescue）
++- DB_USER/DB_PASS: 数据库账号密码（默认 root/123456）
++- CORS_ALLOWED_ORIGINS: 允许的前端域名列表
++
++## 2. 启动脚本（无 Docker）
++
++### start_mac.sh
++```
++#!/usr/bin/env bash
++set -euo pipefail
++
++ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++cd "$ROOT"
++
++APP_PORT="${APP_PORT:-8080}"
++API_HOST="${API_HOST:-127.0.0.1}"
++API_PORT="${API_PORT:-8080}"
++
++DB_HOST="${DB_HOST:-127.0.0.1}"
++DB_PORT="${DB_PORT:-3306}"
++DB_NAME="${DB_NAME:-cat_rescue}"
++DB_USER="${DB_USER:-root}"
++DB_PASS="${DB_PASS:-123456}"
++
++CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001}"
++SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
++
++log() {
++  printf "[%s] %s\n" "$(date +%H:%M:%S)" "$*"
++}
++
++log "检查 Java..."
++if ! java -version >/dev/null 2>&1; then
++  echo "未检测到 Java，请先安装 Java 17+" >&2
++  exit 1
++fi
++java -version 2>&1 | head -n 1
++
++log "检查 Node.js..."
++if ! node -v >/dev/null 2>&1; then
++  echo "未检测到 Node.js，请先安装 Node 16+" >&2
++  exit 1
++fi
++node -v
++
++log "检查 MySQL 连接..."
++MYSQL_OK=0
++if command -v mysqladmin >/dev/null 2>&1; then
++  if [ -n "$DB_PASS" ]; then
++    mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" >/dev/null 2>&1 && MYSQL_OK=1 || MYSQL_OK=0
++  else
++    mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" >/dev/null 2>&1 && MYSQL_OK=1 || MYSQL_OK=0
++  fi
++elif command -v nc >/dev/null 2>&1; then
++  nc -z "$DB_HOST" "$DB_PORT" >/dev/null 2>&1 && MYSQL_OK=1 || MYSQL_OK=0
++fi
++
++if [ "$MYSQL_OK" -ne 1 ]; then
++  log "MySQL 未就绪：请确认 MySQL 已启动，并执行 init-db.bat 初始化数据库。"
++else
++  log "MySQL 端口可达。"
++fi
++
++if command -v mysql >/dev/null 2>&1; then
++  DB_EXISTS=""
++  if [ -n "$DB_PASS" ]; then
++    DB_EXISTS=$(mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" -N -s -e "SHOW DATABASES LIKE '$DB_NAME';" 2>/dev/null || true)
++  else
++    DB_EXISTS=$(mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -N -s -e "SHOW DATABASES LIKE '$DB_NAME';" 2>/dev/null || true)
++  fi
++  if [ -z "$DB_EXISTS" ]; then
++    log "数据库 $DB_NAME 不存在：请先运行初始化脚本。"
++  fi
++fi
++
++log "启动后端 (端口 $APP_PORT)..."
++nohup env \
++  APP_PORT="$APP_PORT" \
++  DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_NAME="$DB_NAME" DB_USER="$DB_USER" DB_PASS="$DB_PASS" \
++  CORS_ALLOWED_ORIGINS="$CORS_ALLOWED_ORIGINS" \
++  java -jar backend/cat-rescue.jar --spring.profiles.active="$SPRING_PROFILES_ACTIVE" \
++  > backend/backend.log 2>&1 &
++BACK_PID=$!
++log "后端 PID: $BACK_PID (日志: backend/backend.log)"
++
++log "启动用户前端 (端口 5000)..."
++nohup env API_HOST="$API_HOST" API_PORT="$API_PORT" node frontend/server.js > frontend/frontend.log 2>&1 &
++FRONT_PID=$!
++log "用户前端 PID: $FRONT_PID (日志: frontend/frontend.log)"
++
++log "启动管理后台 (端口 5001)..."
++nohup env API_HOST="$API_HOST" API_PORT="$API_PORT" node admin-frontend/server.js > admin-frontend/admin.log 2>&1 &
++ADMIN_PID=$!
++log "管理后台 PID: $ADMIN_PID (日志: admin-frontend/admin.log)"
++
++sleep 6
++
++log "健康检查..."
++health_url="http://127.0.0.1:${APP_PORT}/actuator/health"
++health_status=$(curl -sS -o /dev/null -w "%{http_code}" "$health_url" || echo "000")
++if [ "$health_status" != "200" ]; then
++  alt_url="http://127.0.0.1:${APP_PORT}/api/health"
++  alt_status=$(curl -sS -o /dev/null -w "%{http_code}" "$alt_url" || echo "000")
++else
++  alt_url=""
++  alt_status=""
++fi
++
++frontend_status=$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:5000/" || echo "000")
++admin_status=$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:5001/" || echo "000")
++
++log "后端健康检查: ${health_url} -> ${health_status}"
++if [ -n "$alt_url" ]; then
++  log "后端备用检查: ${alt_url} -> ${alt_status}"
++fi
++log "用户前端: http://127.0.0.1:5000/ -> ${frontend_status}"
++log "管理后台: http://127.0.0.1:5001/ -> ${admin_status}"
++
++log "启动完成。"
++```
++
++### start_windows.ps1
++```
++#requires -version 5.1
++Set-StrictMode -Version Latest
++
++$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
++Set-Location $Root
++
++if (-not $env:APP_PORT) { $env:APP_PORT = "8080" }
++if (-not $env:API_HOST) { $env:API_HOST = "127.0.0.1" }
++if (-not $env:API_PORT) { $env:API_PORT = $env:APP_PORT }
++
++if (-not $env:DB_HOST) { $env:DB_HOST = "127.0.0.1" }
++if (-not $env:DB_PORT) { $env:DB_PORT = "3306" }
++if (-not $env:DB_NAME) { $env:DB_NAME = "cat_rescue" }
++if (-not $env:DB_USER) { $env:DB_USER = "root" }
++if (-not $env:DB_PASS) { $env:DB_PASS = "123456" }
++
++if (-not $env:CORS_ALLOWED_ORIGINS) {
++  $env:CORS_ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001"
++}
++if (-not $env:SPRING_PROFILES_ACTIVE) { $env:SPRING_PROFILES_ACTIVE = "local" }
++
++function Write-Log($msg) {
++  $ts = (Get-Date).ToString("HH:mm:ss")
++  Write-Host "[$ts] $msg"
++}
++
++Write-Log "检查 Java..."
++try {
++  & java -version 2>$null | Out-Null
++} catch {
++  Write-Error "未检测到 Java，请先安装 Java 17+"
++  exit 1
++}
++& java -version 2>&1 | Select-Object -First 1 | ForEach-Object { Write-Host $_ }
++
++Write-Log "检查 Node.js..."
++try {
++  & node -v 2>$null | Out-Null
++} catch {
++  Write-Error "未检测到 Node.js，请先安装 Node 16+"
++  exit 1
++}
++& node -v 2>&1 | Select-Object -First 1 | ForEach-Object { Write-Host $_ }
++
++Write-Log "检查 MySQL 连接..."
++$mysqlOk = $false
++if (Get-Command mysqladmin -ErrorAction SilentlyContinue) {
++  try {
++    if ($env:DB_PASS) {
++      & mysqladmin ping -h $env:DB_HOST -P $env:DB_PORT -u $env:DB_USER -p$env:DB_PASS | Out-Null
++    } else {
++      & mysqladmin ping -h $env:DB_HOST -P $env:DB_PORT -u $env:DB_USER | Out-Null
++    }
++    $mysqlOk = $true
++  } catch {
++    $mysqlOk = $false
++  }
++} else {
++  try {
++    $tcp = Test-NetConnection -ComputerName $env:DB_HOST -Port $env:DB_PORT -WarningAction SilentlyContinue
++    $mysqlOk = $tcp.TcpTestSucceeded
++  } catch {
++    $mysqlOk = $false
++  }
++}
++
++if (-not $mysqlOk) {
++  Write-Log "MySQL 未就绪：请确认 MySQL 已启动，并执行 init-db.bat 初始化数据库。"
++} else {
++  Write-Log "MySQL 端口可达。"
++}
++
++if (Get-Command mysql -ErrorAction SilentlyContinue) {
++  try {
++    $dbExists = $null
++    if ($env:DB_PASS) {
++      $dbExists = & mysql -h $env:DB_HOST -P $env:DB_PORT -u $env:DB_USER -p$env:DB_PASS -N -s -e "SHOW DATABASES LIKE '$($env:DB_NAME)';" 2>$null
++    } else {
++      $dbExists = & mysql -h $env:DB_HOST -P $env:DB_PORT -u $env:DB_USER -N -s -e "SHOW DATABASES LIKE '$($env:DB_NAME)';" 2>$null
++    }
++    if (-not $dbExists) {
++      Write-Log "数据库 $($env:DB_NAME) 不存在：请先运行初始化脚本。"
++    }
++  } catch {
++    # ignore
++  }
++}
++
++Write-Log "启动后端 (端口 $($env:APP_PORT))..."
++$backendLog = Join-Path $Root "backend\backend.log"
++Start-Process -FilePath "java" -ArgumentList @("-jar","cat-rescue.jar","--spring.profiles.active=$($env:SPRING_PROFILES_ACTIVE)") -WorkingDirectory (Join-Path $Root "backend") -RedirectStandardOutput $backendLog -RedirectStandardError $backendLog -NoNewWindow | Out-Null
++Write-Log "后端日志: $backendLog"
++
++Write-Log "启动用户前端 (端口 5000)..."
++$frontendLog = Join-Path $Root "frontend\frontend.log"
++Start-Process -FilePath "node" -ArgumentList @("server.js") -WorkingDirectory (Join-Path $Root "frontend") -RedirectStandardOutput $frontendLog -RedirectStandardError $frontendLog -NoNewWindow | Out-Null
++Write-Log "用户前端日志: $frontendLog"
++
++Write-Log "启动管理后台 (端口 5001)..."
++$adminLog = Join-Path $Root "admin-frontend\admin.log"
++Start-Process -FilePath "node" -ArgumentList @("server.js") -WorkingDirectory (Join-Path $Root "admin-frontend") -RedirectStandardOutput $adminLog -RedirectStandardError $adminLog -NoNewWindow | Out-Null
++Write-Log "管理后台日志: $adminLog"
++
++Start-Sleep -Seconds 6
++
++function Get-HttpStatus($url) {
++  try {
++    $resp = Invoke-WebRequest -UseBasicParsing -Uri $url -Method Get -TimeoutSec 5
++    return $resp.StatusCode
++  } catch {
++    if ($_.Exception.Response) {
++      return $_.Exception.Response.StatusCode.value__
++    }
++    return 0
++  }
++}
++
++Write-Log "健康检查..."
++$healthUrl = "http://127.0.0.1:$($env:APP_PORT)/actuator/health"
++$healthStatus = Get-HttpStatus $healthUrl
++if ($healthStatus -ne 200) {
++  $altUrl = "http://127.0.0.1:$($env:APP_PORT)/api/health"
++  $altStatus = Get-HttpStatus $altUrl
++}
++$frontendStatus = Get-HttpStatus "http://127.0.0.1:5000/"
++$adminStatus = Get-HttpStatus "http://127.0.0.1:5001/"
++
++Write-Log "后端健康检查: $healthUrl -> $healthStatus"
++if ($altUrl) { Write-Log "后端备用检查: $altUrl -> $altStatus" }
++Write-Log "用户前端: http://127.0.0.1:5000/ -> $frontendStatus"
++Write-Log "管理后台: http://127.0.0.1:5001/ -> $adminStatus"
++Write-Log "启动完成。"
++```
++
++### 示例输出格式（示意，非执行）
++```
++[HH:MM:SS] 检查 Java...
++java version "17.x"
++[HH:MM:SS] 检查 Node.js...
++v16.x.x
++[HH:MM:SS] 检查 MySQL 连接...
++[HH:MM:SS] MySQL 端口可达。
++[HH:MM:SS] 启动后端 (端口 8080)...
++[HH:MM:SS] 启动用户前端 (端口 5000)...
++[HH:MM:SS] 启动管理后台 (端口 5001)...
++[HH:MM:SS] 健康检查...
++[HH:MM:SS] 后端健康检查: http://127.0.0.1:8080/actuator/health -> 200
++[HH:MM:SS] 用户前端: http://127.0.0.1:5000/ -> 200
++[HH:MM:SS] 管理后台: http://127.0.0.1:5001/ -> 200
++```
++
++## 3. 前端/管理端 API 基地址统一
++
++### config.js (frontend/admin-frontend)
++```
++// Runtime API base configuration (can be edited without rebuilding)
++window.__API_BASE__ = window.__API_BASE__ || '/api';
++```
++```
++// Runtime API base configuration (can be edited without rebuilding)
++window.__API_BASE__ = window.__API_BASE__ || '/api';
++```
++
++### grep 证明无硬编码 localhost:8080
++```
++```
++
++## 4. 管理端登录与鉴权闭环（静态分析）
++- 登录请求：POST /api/users/login（login.html 使用表单提交）
++- Token 存储：localStorage.admin_token + localStorage.admin_user
++- 鉴权头：Authorization: Bearer <token>（common.js ApiClient）
++- 入口：layout.html 先 Auth.requireAuth()，通过后加载页面
++
++### 管理端 12 页面 API 使用清单（从 pages/*.html 提取）
++```
++# adoptions.html
++# cat-tags.html
++# cats.html
++# crowdfunding.html
++# dashboard.html
++  - API.dashboard.activeUsers
++  - API.dashboard.activityStats
++  - API.dashboard.pendingTasks
++  - API.dashboard.popularCats
++  - API.dashboard.recentActivities
++  - API.dashboard.statistics
++  - API.dashboard.systemHealth
++  - API.dashboard.userGrowth
++# dynamics.html
++# finance.html
++# notifications.html
++# rescues.html
++# universities.html
++# users.html
++  - API.users.changeRole
++  - API.users.changeStatus
++  - API.users.create
++  - API.users.delete
++  - API.users.detail
++  - API.users.list
++  - API.users.statistics
++  - API.users.update
++# verifications.html
++```
++
++## 5. 云养/捐献/打赏 MVP（基于现有后端 Controller/DTO 证据）
++
++### Controller 路由证据（javap 提取）
++```
++233:          value=["/page"]
++269:          value=["/{id}"]
++319:          value=["/my-adoptions"]
++358:          value=["/cat/{catId}"]
++406:          value=["/expiring-soon"]
++510:          value=["/{id}"]
++567:          value=["/{id}/cancel"]
++622:          value=["/{id}/renew"]
++680:          value=["/stats"]
++723:          value=["/check-cat-adopted"]
++772:      value=["/api/cloud-adoption"]
++262:          value=["/page"]
++298:          value=["/{id}"]
++353:          value=["/my-donations"]
++406:          value=["/cat/{catId}"]
++467:          value=["/crowdfunding/{crowdfundingId}"]
++575:          value=["/{id}/status"]
++638:          value=["/total/cat/{catId}"]
++683:          value=["/total/crowdfunding/{crowdfundingId}"]
++730:          value=["/total/user"]
++773:          value=["/ranking/cat/{catId}"]
++835:          value=["/ranking/crowdfunding/{crowdfundingId}"]
++895:          value=["/stats/user"]
++934:          value=["/stats/cat/{catId}"]
++983:      value=["/api/donation"]
++260:          value=["/page"]
++296:          value=["/{id}"]
++351:          value=["/my-projects"]
++404:          value=["/cat/{catId}"]
++465:          value=["/ending-soon"]
++525:          value=["/hot"]
++629:          value=["/{id}"]
++686:          value=["/{id}/activate"]
++738:          value=["/{id}/cancel"]
++793:          value=["/{id}/progress"]
++849:          value=["/stats/{id}"]
++899:          value=["/stats/creator"]
++927:          value=["/check-status"]
++967:      value=["/api/crowdfunding"]
++```
++
++### DTO 字段证据（javap -private）
++```
++Compiled from "CloudAdoptionDTO.java"
++public class com.campus.cat.module.cloudadoption.dto.CloudAdoptionDTO {
++  private java.lang.Long catId;
++  private java.lang.String adoptionName;
++  private java.math.BigDecimal monthlyAmount;
++  private java.time.LocalDate startDate;
++  private java.time.LocalDate endDate;
++  private java.lang.String message;
++  public com.campus.cat.module.cloudadoption.dto.CloudAdoptionDTO();
++  public java.lang.Long getCatId();
++  public java.lang.String getAdoptionName();
++  public java.math.BigDecimal getMonthlyAmount();
++  public java.time.LocalDate getStartDate();
++  public java.time.LocalDate getEndDate();
++  public java.lang.String getMessage();
++  public void setCatId(java.lang.Long);
++  public void setAdoptionName(java.lang.String);
++  public void setMonthlyAmount(java.math.BigDecimal);
++  public void setStartDate(java.time.LocalDate);
++  public void setEndDate(java.time.LocalDate);
++  public void setMessage(java.lang.String);
++  public boolean equals(java.lang.Object);
++  protected boolean canEqual(java.lang.Object);
++  public int hashCode();
++  public java.lang.String toString();
++}
++Compiled from "DonationDTO.java"
++public class com.campus.cat.module.donation.dto.DonationDTO {
++  private java.lang.Long catId;
++  private java.lang.Long crowdfundingId;
++  private java.math.BigDecimal amount;
++  private java.lang.String message;
++  private java.lang.Boolean isAnonymous;
++  private java.lang.String paymentMethod;
++  private java.lang.String transactionId;
++  public com.campus.cat.module.donation.dto.DonationDTO();
++  public java.lang.Long getCatId();
++  public java.lang.Long getCrowdfundingId();
++  public java.math.BigDecimal getAmount();
++  public java.lang.String getMessage();
++  public java.lang.Boolean getIsAnonymous();
++  public java.lang.String getPaymentMethod();
++  public java.lang.String getTransactionId();
++  public void setCatId(java.lang.Long);
++  public void setCrowdfundingId(java.lang.Long);
++  public void setAmount(java.math.BigDecimal);
++  public void setMessage(java.lang.String);
++  public void setIsAnonymous(java.lang.Boolean);
++  public void setPaymentMethod(java.lang.String);
++  public void setTransactionId(java.lang.String);
++  public boolean equals(java.lang.Object);
++  protected boolean canEqual(java.lang.Object);
++  public int hashCode();
++  public java.lang.String toString();
++}
++Compiled from "CrowdfundingDTO.java"
++public class com.campus.cat.module.crowdfunding.dto.CrowdfundingDTO {
++  private java.lang.String title;
++  private java.lang.String description;
++  private java.lang.Long catId;
++  private java.math.BigDecimal targetAmount;
++  private java.time.LocalDate startDate;
++  private java.time.LocalDate endDate;
++  private java.lang.String coverImage;
++  private java.util.List<java.lang.String> imageUrls;
++  private java.lang.String category;
++  private java.lang.String contactInfo;
++  private java.lang.String updateMessage;
++  public com.campus.cat.module.crowdfunding.dto.CrowdfundingDTO();
++  public java.lang.String getTitle();
++  public java.lang.String getDescription();
++  public java.lang.Long getCatId();
++  public java.math.BigDecimal getTargetAmount();
++  public java.time.LocalDate getStartDate();
++  public java.time.LocalDate getEndDate();
++  public java.lang.String getCoverImage();
++  public java.util.List<java.lang.String> getImageUrls();
++  public java.lang.String getCategory();
++  public java.lang.String getContactInfo();
++  public java.lang.String getUpdateMessage();
++  public void setTitle(java.lang.String);
++  public void setDescription(java.lang.String);
++  public void setCatId(java.lang.Long);
++  public void setTargetAmount(java.math.BigDecimal);
++  public void setStartDate(java.time.LocalDate);
++  public void setEndDate(java.time.LocalDate);
++  public void setCoverImage(java.lang.String);
++  public void setImageUrls(java.util.List<java.lang.String>);
++  public void setCategory(java.lang.String);
++  public void setContactInfo(java.lang.String);
++  public void setUpdateMessage(java.lang.String);
++  public boolean equals(java.lang.Object);
++  protected boolean canEqual(java.lang.Object);
++  public int hashCode();
++  public java.lang.String toString();
++}
++```
++
++### SQL 表字段（cat_rescue.sql 片段）
++```
++UNLOCK TABLES;
++
++--
++-- Table structure for table `cloud_adoption`
++--
++
++DROP TABLE IF EXISTS `cloud_adoption`;
++/*!40101 SET @saved_cs_client     = @@character_set_client */;
++/*!50503 SET character_set_client = utf8mb4 */;
++CREATE TABLE `cloud_adoption` (
++  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'äº‘å…»ID',
++  `user_id` bigint NOT NULL COMMENT 'äº‘å…»äººID',
++  `cat_id` bigint NOT NULL COMMENT 'çŒ«å’ªID',
++  `adoption_name` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'äº‘å…»åç§°',
++  `monthly_amount` decimal(10,2) DEFAULT '0.00' COMMENT 'æ¯æœˆäº‘å…»é‡‘é¢',
++  `start_date` date DEFAULT NULL COMMENT 'å¼€å§‹äº‘å…»æ—¥æœŸ',
++  `end_date` date DEFAULT NULL COMMENT 'ç»“æŸäº‘å…»æ—¥æœŸ',
++  `is_active` tinyint DEFAULT '1' COMMENT 'æ˜¯å¦æ´»è·ƒï¼š0-å¦ 1-æ˜¯',
++  `total_amount` decimal(10,2) DEFAULT '0.00' COMMENT 'ç´¯è®¡äº‘å…»é‡‘é¢',
++  `message` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'äº‘å…»å¯„è¯­',
++  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'åˆ›å»ºæ—¶é—´',
++  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'æ›´æ–°æ—¶é—´',
++  PRIMARY KEY (`id`),
++  UNIQUE KEY `uk_user_cat` (`user_id`,`cat_id`),
++  KEY `idx_user_id` (`user_id`),
++  KEY `idx_cat_id` (`cat_id`),
++  KEY `idx_active` (`is_active`),
++  CONSTRAINT `cloud_adoption_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
++  CONSTRAINT `cloud_adoption_ibfk_2` FOREIGN KEY (`cat_id`) REFERENCES `cat` (`id`) ON DELETE CASCADE
++) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='äº‘å…»å…³ç³»è¡¨';
++/*!40101 SET character_set_client = @saved_cs_client */;
++
++--
++-- Dumping data for table `cloud_adoption`
++--
++
++LOCK TABLES `cloud_adoption` WRITE;
++/*!40000 ALTER TABLE `cloud_adoption` DISABLE KEYS */;
++/*!40000 ALTER TABLE `cloud_adoption` ENABLE KEYS */;
++UNLOCK TABLES;
++
++--
++-- Table structure for table `comment`
++--
++
++DROP TABLE IF EXISTS `comment`;
++/*!40101 SET @saved_cs_client     = @@character_set_client */;
++/*!50503 SET character_set_client = utf8mb4 */;
++CREATE TABLE `comment` (
++  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'è¯„è®ºID',
++  `dynamic_id` bigint NOT NULL COMMENT 'åŠ¨æ€ID',
++  `user_id` bigint NOT NULL COMMENT 'è¯„è®ºäººID',
++  `content` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'è¯„è®ºå†…å®¹',
++  `parent_id` bigint DEFAULT '0' COMMENT 'çˆ¶è¯„è®ºIDï¼ˆ0è¡¨ç¤ºé¡¶çº§è¯„è®ºï¼‰',
++  `reply_to_user_id` bigint DEFAULT NULL COMMENT 'å›žå¤ç›®æ ‡ç”¨æˆ·ID',
++  `like_count` int DEFAULT '0' COMMENT 'ç‚¹èµžæ•°',
++  `audit_status` enum('PENDING','APPROVED','REJECTED') COLLATE utf8mb4_unicode_ci DEFAULT 'APPROVED' COMMENT 'å®¡æ ¸çŠ¶æ€ï¼šå¾…å®¡æ ¸/å·²é€šè¿‡/å·²æ‹’ç»',
++  `audit_user_id` bigint DEFAULT NULL COMMENT 'å®¡æ ¸äººID',
++  `audit_time` datetime DEFAULT NULL COMMENT 'å®¡æ ¸æ—¶é—´',
++  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'åˆ›å»ºæ—¶é—´',
++  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'æ›´æ–°æ—¶é—´',
++  `is_deleted` tinyint DEFAULT '0' COMMENT 'æ˜¯å¦åˆ é™¤ï¼š0-å¦ 1-æ˜¯',
++  PRIMARY KEY (`id`),
++  KEY `idx_dynamic_id` (`dynamic_id`),
++  KEY `idx_user_id` (`user_id`),
++  KEY `idx_parent_id` (`parent_id`),
++  KEY `reply_to_user_id` (`reply_to_user_id`),
++  CONSTRAINT `comment_ibfk_1` FOREIGN KEY (`dynamic_id`) REFERENCES `cat_dynamic` (`id`) ON DELETE CASCADE,
++  CONSTRAINT `comment_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
++  CONSTRAINT `comment_ibfk_3` FOREIGN KEY (`reply_to_user_id`) REFERENCES `user` (`id`)
++) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='è¯„è®ºè¡¨';
++/*!40101 SET character_set_client = @saved_cs_client */;
++
++--
++-- Dumping data for table `comment`
++--
++
++LOCK TABLES `comment` WRITE;
++/*!40000 ALTER TABLE `comment` DISABLE KEYS */;
++/*!40000 ALTER TABLE `comment` ENABLE KEYS */;
++UNLOCK TABLES;
++
++--
++-- Table structure for table `crowdfunding`
++--
++
++DROP TABLE IF EXISTS `crowdfunding`;
++/*!40101 SET @saved_cs_client     = @@character_set_client */;
++/*!50503 SET character_set_client = utf8mb4 */;
++CREATE TABLE `crowdfunding` (
++  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ä¼—ç­¹ID',
++  `title` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'é¡¹ç›®æ ‡é¢˜',
++  `description` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'é¡¹ç›®æè¿°',
++  `cat_id` bigint DEFAULT NULL COMMENT 'å…³è”çŒ«å’ªIDï¼ˆå¯é€‰ï¼‰',
++  `creator_id` bigint NOT NULL COMMENT 'å‘èµ·äººID',
++  `target_amount` decimal(10,2) NOT NULL COMMENT 'ç›®æ ‡é‡‘é¢',
++  `current_amount` decimal(10,2) DEFAULT '0.00' COMMENT 'å½“å‰é‡‘é¢',
++  `start_date` date DEFAULT NULL COMMENT 'å¼€å§‹æ—¥æœŸ',
++  `end_date` date DEFAULT NULL COMMENT 'ç»“æŸæ—¥æœŸ',
++  `status` enum('DRAFT','ACTIVE','COMPLETED','FAILED','CANCELLED') COLLATE utf8mb4_unicode_ci DEFAULT 'DRAFT' COMMENT 'çŠ¶æ€ï¼šè‰ç¨¿/è¿›è¡Œä¸­/å·²å®Œæˆ/å·²å¤±è´¥/å·²å–æ¶ˆ',
++  `cover_image` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'å°é¢å›¾ç‰‡',
++  `image_urls` text COLLATE utf8mb4_unicode_ci COMMENT 'é¡¹ç›®å›¾ç‰‡ï¼ˆJSONæ ¼å¼ï¼‰',
++  `category` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'é¡¹ç›®åˆ†ç±»',
++  `contact_info` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'è”ç³»æ–¹å¼',
++  `update_message` text COLLATE utf8mb4_unicode_ci COMMENT 'é¡¹ç›®è¿›å±•æ›´æ–°',
++  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'åˆ›å»ºæ—¶é—´',
++  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'æ›´æ–°æ—¶é—´',
++  PRIMARY KEY (`id`),
++  KEY `idx_cat_id` (`cat_id`),
++  KEY `idx_creator_id` (`creator_id`),
++  KEY `idx_status` (`status`),
++  KEY `idx_start_date` (`start_date`),
++  KEY `idx_end_date` (`end_date`)
++) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ä¼—ç­¹é¡¹ç›®è¡¨';
++/*!40101 SET character_set_client = @saved_cs_client */;
++
++--
++-- Dumping data for table `crowdfunding`
++--
++
++LOCK TABLES `crowdfunding` WRITE;
++/*!40000 ALTER TABLE `crowdfunding` DISABLE KEYS */;
++INSERT INTO `crowdfunding` VALUES (1,'团团皮肤病治疗费用','团团正在接受皮肤病治疗，预计需要治疗费用2000元，希望大家能帮助它渡过难关。',7,3,2000.00,1350.00,'2024-10-20','2024-12-20','ACTIVE',NULL,NULL,NULL,NULL,NULL,'2026-01-04 14:48:56','2026-01-19 22:10:35'),(2,'小橘绝育疫苗费用','小橘需要进行绝育手术和疫苗接种，预计费用800元。',6,5,800.00,450.00,'2024-11-15','2024-12-31','ACTIVE',NULL,NULL,NULL,NULL,NULL,'2026-01-04 14:48:56','2026-01-19 22:10:35');
++/*!40000 ALTER TABLE `crowdfunding` ENABLE KEYS */;
++UNLOCK TABLES;
++
++--
++-- Table structure for table `donation`
++--
++
++DROP TABLE IF EXISTS `donation`;
++/*!40101 SET @saved_cs_client     = @@character_set_client */;
++/*!50503 SET character_set_client = utf8mb4 */;
++CREATE TABLE `donation` (
++  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'æèµ ID',
++  `user_id` bigint NOT NULL COMMENT 'æèµ äººID',
++  `cat_id` bigint DEFAULT NULL COMMENT 'çŒ«å’ªIDï¼ˆå¯é€‰ï¼‰',
++  `crowdfunding_id` bigint DEFAULT NULL COMMENT 'ä¼—ç­¹é¡¹ç›®ID',
++  `amount` decimal(10,2) NOT NULL COMMENT 'æèµ é‡‘é¢',
++  `payment_method` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'æ”¯ä»˜æ–¹å¼',
++  `transaction_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'ç¬¬ä¸‰æ–¹äº¤æ˜“å·',
++  `status` enum('PENDING','SUCCESS','FAILED','REFUNDED') COLLATE utf8mb4_unicode_ci DEFAULT 'PENDING' COMMENT 'çŠ¶æ€',
++  `message` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'ç•™è¨€',
++  `is_anonymous` tinyint(1) DEFAULT '0' COMMENT 'æ˜¯å¦åŒ¿å',
++  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'åˆ›å»ºæ—¶é—´',
++  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'æ›´æ–°æ—¶é—´',
++  PRIMARY KEY (`id`),
++  KEY `idx_user_id` (`user_id`),
++  KEY `idx_crowdfunding_id` (`crowdfunding_id`),
++  KEY `idx_status` (`status`),
++  KEY `idx_cat_id` (`cat_id`),
++  KEY `idx_create_time` (`create_time`)
++) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='æèµ è®°å½•è¡¨';
++/*!40101 SET character_set_client = @saved_cs_client */;
++
++--
++-- Dumping data for table `donation`
++--
++
++LOCK TABLES `donation` WRITE;
++/*!40000 ALTER TABLE `donation` DISABLE KEYS */;
++INSERT INTO `donation` VALUES (1,4,NULL,1,200.00,'WECHAT',NULL,'SUCCESS','团团加油！',0,'2026-01-04 14:48:56','2026-01-19 22:53:27'),(2,6,NULL,1,100.00,'ALIPAY',NULL,'SUCCESS','希望早日康复',0,'2026-01-04 14:48:56','2026-01-19 22:53:27'),(3,2,NULL,1,500.00,'WECHAT',NULL,'SUCCESS','支持流浪猫救助',1,'2026-01-04 14:48:56','2026-01-19 22:53:27'),(4,4,NULL,1,300.00,'WECHAT',NULL,'SUCCESS','再捐一点',0,'2026-01-04 14:48:56','2026-01-19 22:53:27'),(5,6,NULL,1,250.00,'ALIPAY',NULL,'SUCCESS','',0,'2026-01-04 14:48:56','2026-01-19 22:34:09'),(6,4,NULL,2,200.00,'WECHAT',NULL,'SUCCESS','小橘要健康',0,'2026-01-04 14:48:56','2026-01-19 22:53:27'),(7,2,NULL,2,150.00,'ALIPAY',NULL,'SUCCESS','',0,'2026-01-04 14:48:56','2026-01-19 22:34:09'),(8,6,NULL,2,100.00,'WECHAT',NULL,'SUCCESS','加油',0,'2026-01-04 14:48:56','2026-01-19 22:53:27');
++/*!40000 ALTER TABLE `donation` ENABLE KEYS */;
++UNLOCK TABLES;
++
++--
++-- Table structure for table `finance`
++--
++
++DROP TABLE IF EXISTS `finance`;
++/*!40101 SET @saved_cs_client     = @@character_set_client */;
++```
++
++### MVP 页面文件（frontend/mvp）
++```
++cloud-adoption-detail.html
++cloud-adoption-list.html
++cloud-adoption-mine.html
++cloud-adoption-order.html
++donation-detail.html
++donation-mine.html
++donation-new.html
++donation-projects.html
++mvp-login.html
++mvp.css
++mvp.js
++tip.html
++```
++
++### MVP 页面与 API 路由映射
++- 云养列表: /mvp/cloud-adoption-list.html -> GET /api/cloud-adoption/page
++- 云养详情: /mvp/cloud-adoption-detail.html -> GET /api/cloud-adoption/{id}
++- 发起云养: /mvp/cloud-adoption-order.html -> POST /api/cloud-adoption
++- 我的云养: /mvp/cloud-adoption-mine.html -> GET /api/cloud-adoption/my-adoptions
++- 捐献项目列表: /mvp/donation-projects.html -> GET /api/crowdfunding/page
++- 捐献项目详情: /mvp/donation-detail.html -> GET /api/crowdfunding/{id}
++- 发起捐献: /mvp/donation-new.html -> POST /api/donation
++- 我的捐献: /mvp/donation-mine.html -> GET /api/donation/my-donations
++- 打赏(复用捐献): /mvp/tip.html -> POST /api/donation (catId + amount)
++
++### SQL 字段映射说明
++- cloud_adoption: catId->cat_id, adoptionName->adoption_name, monthlyAmount->monthly_amount, startDate->start_date, endDate->end_date, message->message
++- donation: catId->cat_id, crowdfundingId->crowdfunding_id, amount->amount, paymentMethod->payment_method, transactionId->transaction_id, isAnonymous->is_anonymous, message->message
++- crowdfunding: title->title, description->description, catId->cat_id, targetAmount->target_amount, startDate->start_date, endDate->end_date, coverImage->cover_image, imageUrls->image_urls, category->category, contactInfo->contact_info, updateMessage->update_message
++
++### curl 示例（需后端与数据库可用）
++```bash
++# 登录获取 token（示例）
++curl -s -X POST "http://127.0.0.1:8080/api/users/login" \
++  -H "Content-Type: application/x-www-form-urlencoded" \
++  -d "username=admin&password=123456"
++
++# 发起云养
++curl -s -X POST "http://127.0.0.1:8080/api/cloud-adoption" \
++  -H "Content-Type: application/json" \
++  -H "Authorization: Bearer <TOKEN>" \
++  -d '{"catId":1,"adoptionName":"云养小橘","monthlyAmount":99.00,"startDate":"2026-02-01","endDate":"2026-05-01","message":"加油"}'
++
++# 发起捐献
++curl -s -X POST "http://127.0.0.1:8080/api/donation" \
++  -H "Content-Type: application/json" \
++  -H "Authorization: Bearer <TOKEN>" \
++  -d '{"crowdfundingId":1,"amount":50.00,"paymentMethod":"WECHAT","isAnonymous":false,"message":"支持"}'
++```
++
++## 6. 变更记录（新增/修改文件）
++- 修改: backend/application-prod.yml（环境变量可配置）
++- 新增: backend/application-local.yml
++- 新增: start_mac.sh, start_windows.ps1
++- 新增: README_WINDOWS.md, README_MAC.md
++- 新增: frontend/config.js, admin-frontend/config.js
++- 修改: frontend/server.js, frontend/index.html
++- 修改: admin-frontend/server.js, admin-frontend/js/api.js, admin-frontend/login.html, admin-frontend/dashboard.html, admin-frontend/api-test.html, admin-frontend/layout.html
++- 修改: frontend/AGENTS.md, admin-frontend/AGENTS.md, admin-frontend/API接口问题修复说明.md, admin-frontend/新版管理后台说明.md
++- 新增: frontend/mvp/*（云养/捐献/打赏 MVP 页面）
++- 新增: .jar-inspect（仅用于读取 Controller/DTO 证据）
++
++## 5.x 数据库可达性检查（本机）
++
++### mysqladmin ping
++```
++mysqladmin: [Warning] Using a password on the command line interface can be insecure.
++mysqladmin: connect to server at '127.0.0.1' failed
++error: 'Access denied for user 'root'@'localhost' (using password: YES)'
++```
++
++### mysql 读取测试
++```
++mysql: [Warning] Using a password on the command line interface can be insecure.
++ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: YES)
++```
+--- deploy/PATCHES/application-prod.yml.20260208_102329.bak	2026-02-08 10:23:29
++++ deploy/backend/application-prod.yml	2026-02-08 10:23:42
+@@ -1,4 +1,7 @@
+ # 生产环境配置
++server:
++  port: ${APP_PORT:8080}
++
+ spring:
+   # 静态资源配置 - 让后端同时提供前端页面
+   web:
+@@ -10,13 +13,13 @@
+ 
+   # 数据源配置
+   datasource:
+-    url: jdbc:mysql://localhost:3306/cat_rescue?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+-    username: root
+-    password: 123456
++    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:cat_rescue}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
++    username: ${DB_USER:root}
++    password: ${DB_PASS:123456}
+ 
+ # CORS配置
+ cors:
+-  allowed-origins: http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001
++  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001}
+ 
+ # 文件上传路径
+ file:

@@ -1,0 +1,290 @@
+<!-- Rescue Management Page -->
+<div class="page-container">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">🚑</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="totalRescues">0</div>
+                <div class="stat-card-label">总救助数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">⏳</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="pendingRescues">0</div>
+                <div class="stat-card-label">待处理</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">✓</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="completedRescues">0</div>
+                <div class="stat-card-label">已完成</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">📍</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="inProgressRescues">0</div>
+                <div class="stat-card-label">进行中</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索位置、描述...">
+                    <select id="statusFilter" class="form-control">
+                        <option value="">全部状态</option>
+                        <option value="PENDING">待处理</option>
+                        <option value="IN_PROGRESS">进行中</option>
+                        <option value="COMPLETED">已完成</option>
+                        <option value="CANCELLED">已取消</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="window.rescuePageHandlers.search()">搜索</button>
+                    <button class="btn btn-secondary" onclick="window.rescuePageHandlers.reset()">重置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>报告人</th>
+                            <th>位置</th>
+                            <th>描述</th>
+                            <th>状态</th>
+                            <th>报告时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rescueTableBody">
+                        <tr><td colspan="7" class="text-center">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-container" id="paginationContainer"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="detailModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+            <h3>救助详情</h3>
+            <button class="modal-close" onclick="Modal.close('detailModal')">&times;</button>
+        </div>
+        <div class="modal-body" id="detailContent"></div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close('detailModal')">关闭</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="updateStatusModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>更新状态</h3>
+            <button class="modal-close" onclick="Modal.close('updateStatusModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="updateId">
+            <div class="form-group">
+                <label>状态</label>
+                <select id="updateStatus" class="form-control">
+                    <option value="PENDING">待处理</option>
+                    <option value="IN_PROGRESS">进行中</option>
+                    <option value="COMPLETED">已完成</option>
+                    <option value="CANCELLED">已取消</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>备注</label>
+                <textarea id="updateNote" class="form-control" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close('updateStatusModal')">取消</button>
+            <button class="btn btn-primary" onclick="window.rescuePageHandlers.submitUpdate()">提交</button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.rescuePageState = window.rescuePageState || { currentPage: 1, pageSize: 10, filters: {} };
+
+window.rescuePageHandlers = {
+    async init() {
+        await this.loadStatistics();
+        await this.loadRescues();
+    },
+
+    async loadStatistics() {
+        try {
+            const stats = await ApiClient.request(API_ENDPOINTS.rescues.statistics);
+            document.getElementById('totalRescues').textContent = stats.total || 0;
+            document.getElementById('pendingRescues').textContent = stats.pending || 0;
+            document.getElementById('completedRescues').textContent = stats.completed || 0;
+            document.getElementById('inProgressRescues').textContent = stats.inProgress || 0;
+        } catch (error) {
+            console.error('Load statistics error:', error);
+        }
+    },
+
+    async loadRescues() {
+        try {
+            Loading.show();
+            const params = {
+                page: window.rescuePageState.currentPage,
+                size: window.rescuePageState.pageSize,
+                ...window.rescuePageState.filters
+            };
+
+            const response = await ApiClient.request(API_ENDPOINTS.rescues.list, {
+                method: 'GET',
+                params
+            });
+
+            this.renderTable(response.records || []);
+            this.renderPagination(response.total || 0);
+        } catch (error) {
+            Toast.error('加载救助列表失败: ' + error.message);
+            document.getElementById('rescueTableBody').innerHTML = `
+                <tr><td colspan="7" class="text-center text-danger">加载失败: ${error.message}</td></tr>
+            `;
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    renderTable(rescues) {
+        const tbody = document.getElementById('rescueTableBody');
+        if (rescues.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rescues.map(r => `
+            <tr>
+                <td>${r.id}</td>
+                <td>${r.reporterName || '-'}</td>
+                <td>${r.location || '-'}</td>
+                <td>${r.description ? (r.description.length > 30 ? r.description.substring(0, 30) + '...' : r.description) : '-'}</td>
+                <td><span class="badge badge-${this.getStatusColor(r.status)}">${this.getStatusText(r.status)}</span></td>
+                <td>${Utils.formatDate(r.createTime)}</td>
+                <td>
+                    <button class="btn btn-sm btn-info" onclick="window.rescuePageHandlers.showDetail(${r.id})">详情</button>
+                    <button class="btn btn-sm btn-primary" onclick="window.rescuePageHandlers.showUpdateModal(${r.id}, '${r.status}')">更新</button>
+                </td>
+            </tr>
+        `).join('');
+    },
+
+    renderPagination(total) {
+        const totalPages = Math.ceil(total / window.rescuePageState.pageSize);
+        const container = document.getElementById('paginationContainer');
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = PaginationComponent.render(
+            window.rescuePageState.currentPage,
+            totalPages,
+            total,
+            (page) => {
+                window.rescuePageState.currentPage = page;
+                this.loadRescues();
+            }
+        );
+    },
+
+    getStatusColor(status) {
+        return { 'PENDING': 'warning', 'IN_PROGRESS': 'info', 'COMPLETED': 'success', 'CANCELLED': 'secondary' }[status] || 'secondary';
+    },
+
+    getStatusText(status) {
+        return { 'PENDING': '待处理', 'IN_PROGRESS': '进行中', 'COMPLETED': '已完成', 'CANCELLED': '已取消' }[status] || status;
+    },
+
+    search() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        const status = document.getElementById('statusFilter').value;
+        window.rescuePageState.filters = {};
+        if (keyword) window.rescuePageState.filters.keyword = keyword;
+        if (status) window.rescuePageState.filters.status = status;
+        window.rescuePageState.currentPage = 1;
+        this.loadRescues();
+    },
+
+    reset() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = '';
+        window.rescuePageState.filters = {};
+        window.rescuePageState.currentPage = 1;
+        this.loadRescues();
+    },
+
+    async showDetail(id) {
+        try {
+            Loading.show();
+            const r = await ApiClient.request(API_ENDPOINTS.rescues.detail(id));
+            document.getElementById('detailContent').innerHTML = `
+                <div class="detail-section">
+                    <h4>救助信息</h4>
+                    <div class="detail-row"><span class="detail-label">报告人:</span><span class="detail-value">${r.reporterName || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">联系方式:</span><span class="detail-value">${r.contactPhone || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">位置:</span><span class="detail-value">${r.location || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">描述:</span><span class="detail-value">${r.description || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">状态:</span><span class="badge badge-${this.getStatusColor(r.status)}">${this.getStatusText(r.status)}</span></div>
+                    <div class="detail-row"><span class="detail-label">报告时间:</span><span class="detail-value">${Utils.formatDate(r.createTime)}</span></div>
+                    ${r.photoUrl ? `<div class="detail-row"><span class="detail-label">照片:</span><img src="${r.photoUrl}" style="max-width: 400px; margin-top: 10px;"></div>` : ''}
+                </div>
+            `;
+            Modal.open('detailModal');
+        } catch (error) {
+            Toast.error('加载详情失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    showUpdateModal(id, currentStatus) {
+        document.getElementById('updateId').value = id;
+        document.getElementById('updateStatus').value = currentStatus;
+        document.getElementById('updateNote').value = '';
+        Modal.open('updateStatusModal');
+    },
+
+    async submitUpdate() {
+        const id = document.getElementById('updateId').value;
+        const status = document.getElementById('updateStatus').value;
+        const note = document.getElementById('updateNote').value.trim();
+
+        try {
+            Loading.show();
+            await ApiClient.request(API_ENDPOINTS.rescues.updateStatus(id), {
+                method: 'PUT',
+                body: { status, note }
+            });
+
+            Toast.success('更新成功');
+            Modal.close('updateStatusModal');
+            await this.loadStatistics();
+            await this.loadRescues();
+        } catch (error) {
+            Toast.error('更新失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    }
+};
+
+window.rescuePageHandlers.init();
+</script>

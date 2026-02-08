@@ -1,0 +1,36 @@
+# 生产环境配置
+server:
+  port: ${APP_PORT:8080}
+
+spring:
+  # 静态资源配置 - 让后端同时提供前端页面
+  web:
+    resources:
+      static-locations: classpath:/static/,file:../frontend/,file:../uploads/
+      add-mappings: true
+  mvc:
+    static-path-pattern: /**
+
+  # 数据源配置
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:cat_rescue}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USER:root}
+    password: ${DB_PASS:123456}
+
+# CORS配置
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5000,http://localhost:5001}
+
+# 文件上传路径
+file:
+  upload-path: ../uploads/
+
+# JWT配置
+jwt:
+  secret: cat-rescue-jwt-secret-key-2024-very-long-string-for-security-purpose-32chars
+
+# 日志级别 - 生产环境减少日志
+logging:
+  level:
+    com.campus.cat: info
+    com.campus.cat.module.*.mapper: warn

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/cat-icon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="校园流浪猫救助平台 - 让每一只流浪猫都有温暖的家">
+    <meta name="keywords" content="流浪猫,救助,领养,校园,爱心">
+    <title>校园流浪猫救助平台</title>
+    <script type="module" crossorigin src="/assets/index-BeZeSF5x.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vue-vendor-L7KxampG.js">
+    <link rel="modulepreload" crossorigin href="/assets/element-plus-o-j_G_-z.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-CCXpdI6d.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-CBIOQEZf.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

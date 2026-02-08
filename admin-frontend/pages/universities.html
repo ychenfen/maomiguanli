@@ -1,0 +1,204 @@
+<!-- Universities Management Page -->
+<div class="page-container">
+    <div class="card">
+        <div class="card-header">
+            <h3>高校管理</h3>
+            <button class="btn btn-success" onclick="window.universitiesPageHandlers.showCreateModal()">+ 添加高校</button>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>高校名称</th>
+                            <th>所在城市</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="universitiesTableBody">
+                        <tr><td colspan="5" class="text-center">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-container" id="paginationContainer"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="universityModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 id="modalTitle">添加高校</h3>
+            <button class="modal-close" onclick="Modal.close('universityModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="universityId">
+            <div class="form-group">
+                <label>高校名称 *</label>
+                <input type="text" id="universityName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>所在城市 *</label>
+                <input type="text" id="universityCity" class="form-control" required>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close('universityModal')">取消</button>
+            <button class="btn btn-primary" onclick="window.universitiesPageHandlers.saveUniversity()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.universitiesPageState = window.universitiesPageState || { currentPage: 1, pageSize: 10 };
+
+window.universitiesPageHandlers = {
+    async init() {
+        await this.loadUniversities();
+    },
+
+    async loadUniversities() {
+        try {
+            Loading.show();
+            const params = {
+                page: window.universitiesPageState.currentPage,
+                size: window.universitiesPageState.pageSize
+            };
+
+            const response = await ApiClient.request(API_ENDPOINTS.universities.list, {
+                method: 'GET',
+                params
+            });
+
+            this.renderTable(response.records || []);
+            this.renderPagination(response.total || 0);
+        } catch (error) {
+            Toast.error('加载高校列表失败: ' + error.message);
+            document.getElementById('universitiesTableBody').innerHTML = `
+                <tr><td colspan="5" class="text-center text-danger">加载失败: ${error.message}</td></tr>
+            `;
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    renderTable(universities) {
+        const tbody = document.getElementById('universitiesTableBody');
+        if (universities.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = universities.map(u => `
+            <tr>
+                <td>${u.id}</td>
+                <td>${u.name || '-'}</td>
+                <td>${u.city || '-'}</td>
+                <td>${Utils.formatDate(u.createTime)}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="window.universitiesPageHandlers.showEditModal(${u.id})">编辑</button>
+                    <button class="btn btn-sm btn-danger" onclick="window.universitiesPageHandlers.deleteUniversity(${u.id})">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    },
+
+    renderPagination(total) {
+        const totalPages = Math.ceil(total / window.universitiesPageState.pageSize);
+        const container = document.getElementById('paginationContainer');
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = PaginationComponent.render(
+            window.universitiesPageState.currentPage,
+            totalPages,
+            total,
+            (page) => {
+                window.universitiesPageState.currentPage = page;
+                this.loadUniversities();
+            }
+        );
+    },
+
+    showCreateModal() {
+        document.getElementById('modalTitle').textContent = '添加高校';
+        document.getElementById('universityId').value = '';
+        document.getElementById('universityName').value = '';
+        document.getElementById('universityCity').value = '';
+        Modal.open('universityModal');
+    },
+
+    async showEditModal(id) {
+        try {
+            Loading.show();
+            const university = await ApiClient.request(API_ENDPOINTS.universities.detail(id));
+            document.getElementById('modalTitle').textContent = '编辑高校';
+            document.getElementById('universityId').value = university.id;
+            document.getElementById('universityName').value = university.name;
+            document.getElementById('universityCity').value = university.city || '';
+            Modal.open('universityModal');
+        } catch (error) {
+            Toast.error('加载高校信息失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    async saveUniversity() {
+        const id = document.getElementById('universityId').value;
+        const name = document.getElementById('universityName').value.trim();
+        const city = document.getElementById('universityCity').value.trim();
+
+        if (!name || !city) {
+            Toast.warning('请填写所有必填项');
+            return;
+        }
+
+        try {
+            Loading.show();
+            if (id) {
+                await ApiClient.request(API_ENDPOINTS.universities.update(id), {
+                    method: 'PUT',
+                    body: { name, city }
+                });
+                Toast.success('更新成功');
+            } else {
+                await ApiClient.request(API_ENDPOINTS.universities.create, {
+                    method: 'POST',
+                    body: { name, city }
+                });
+                Toast.success('添加成功');
+            }
+
+            Modal.close('universityModal');
+            await this.loadUniversities();
+        } catch (error) {
+            Toast.error('保存失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    async deleteUniversity(id) {
+        if (!confirm('确定要删除这个高校吗？')) return;
+
+        try {
+            Loading.show();
+            await ApiClient.request(API_ENDPOINTS.universities.delete(id), {
+                method: 'DELETE'
+            });
+            Toast.success('删除成功');
+            await this.loadUniversities();
+        } catch (error) {
+            Toast.error('删除失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    }
+};
+
+window.universitiesPageHandlers.init();
+</script>

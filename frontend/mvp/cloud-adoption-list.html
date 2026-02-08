@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>云养列表</title>
+  <link rel="stylesheet" href="/mvp/mvp.css" />
+  <script src="/config.js"></script>
+  <script src="/mvp/mvp.js"></script>
+</head>
+<body>
+  <header>
+    <h1>云养列表</h1>
+    <nav>
+      <a href="/mvp/mvp-login.html">登录</a>
+      <a href="/mvp/cloud-adoption-order.html">发起云养</a>
+      <a href="/mvp/cloud-adoption-mine.html">我的云养</a>
+    </nav>
+  </header>
+
+  <div class="card">
+    <label>pageNum</label>
+    <input id="pageNum" value="1" />
+    <label>pageSize</label>
+    <input id="pageSize" value="10" />
+    <button id="loadBtn">加载列表</button>
+  </div>
+
+  <div class="card">
+    <h3>结果</h3>
+    <pre id="result"></pre>
+  </div>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    document.getElementById('loadBtn').addEventListener('click', async () => {
+      const pageNum = document.getElementById('pageNum').value;
+      const pageSize = document.getElementById('pageSize').value;
+      const data = await MVP.apiGet('/cloud-adoption/page', { pageNum, pageSize });
+      resultEl.textContent = JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>

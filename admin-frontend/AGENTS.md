@@ -1,0 +1,25 @@
+# Agent instructions (scope: this directory and subdirectories)
+
+## Scope and layout
+- This AGENTS.md applies to: `/Users/yuchenxu/Desktop/猫咪领养系统-部署包/deploy/admin-frontend/` and below.
+- Key files: `login.html`, `dashboard.html`, `layout.html`, `server.js`.
+- Key directories: `pages/`, `js/`, `css/`.
+
+## Commands
+- Run (Windows): `启动管理后台.bat`.
+- Run (cross-platform): `node server.js`.
+
+## API wiring
+- API base URL is configured in `config.js` via `window.__API_BASE__` (default `/api`).
+- `server.js` proxies `/api/*` to the backend defined by `API_HOST`/`API_PORT`.
+
+## Conventions
+- This admin UI is plain HTML/JS/CSS (no build step).
+- Prefer editing `pages/`, `js/`, and `css/` directly.
+
+## Common pitfalls
+- Backend must be running and CORS must allow `http://localhost:5001`.
+- Admin login requires `ADMIN` or `SUPER_ADMIN` roles; tokens are stored in `localStorage`.
+
+## Do not
+- Do not rename routes without updating the navigation and `layout.html` references.

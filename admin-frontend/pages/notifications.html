@@ -1,0 +1,349 @@
+<!-- Notifications Management Page -->
+<div class="page-container">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">🔔</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="totalNotifications">0</div>
+                <div class="stat-card-label">总通知数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">📤</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="sentNotifications">0</div>
+                <div class="stat-card-label">已发送</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">✓</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="readNotifications">0</div>
+                <div class="stat-card-label">已读</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">📅</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="todayNotifications">0</div>
+                <div class="stat-card-label">今日发送</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索通知标题、内容...">
+                    <select id="typeFilter" class="form-control">
+                        <option value="">全部类型</option>
+                        <option value="SYSTEM">系统通知</option>
+                        <option value="ADOPTION">领养通知</option>
+                        <option value="VERIFICATION">认证通知</option>
+                        <option value="RESCUE">救助通知</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="window.notificationsPageHandlers.search()">搜索</button>
+                    <button class="btn btn-secondary" onclick="window.notificationsPageHandlers.reset()">重置</button>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn btn-success" onclick="window.notificationsPageHandlers.showCreateModal()">+ 发送通知</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>类型</th>
+                            <th>标题</th>
+                            <th>接收者</th>
+                            <th>状态</th>
+                            <th>发送时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="notificationsTableBody">
+                        <tr><td colspan="7" class="text-center">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-container" id="paginationContainer"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="detailModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+            <h3>通知详情</h3>
+            <button class="modal-close" onclick="Modal.close('detailModal')">&times;</button>
+        </div>
+        <div class="modal-body" id="detailContent"></div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close('detailModal')">关闭</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="createModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>发送通知</h3>
+            <button class="modal-close" onclick="Modal.close('createModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="notificationForm">
+                <div class="form-group">
+                    <label>通知类型 *</label>
+                    <select id="notificationType" class="form-control" required>
+                        <option value="">请选择</option>
+                        <option value="SYSTEM">系统通知</option>
+                        <option value="ADOPTION">领养通知</option>
+                        <option value="VERIFICATION">认证通知</option>
+                        <option value="RESCUE">救助通知</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>标题 *</label>
+                    <input type="text" id="notificationTitle" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>内容 *</label>
+                    <textarea id="notificationContent" class="form-control" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>接收者 *</label>
+                    <select id="notificationTarget" class="form-control" required>
+                        <option value="ALL">全体用户</option>
+                        <option value="SPECIFIC">指定用户</option>
+                    </select>
+                </div>
+                <div class="form-group" id="userIdGroup" style="display: none;">
+                    <label>用户ID</label>
+                    <input type="number" id="notificationUserId" class="form-control">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close('createModal')">取消</button>
+            <button class="btn btn-primary" onclick="window.notificationsPageHandlers.sendNotification()">发送</button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.notificationsPageState = window.notificationsPageState || { currentPage: 1, pageSize: 10, filters: {} };
+
+window.notificationsPageHandlers = {
+    async init() {
+        await this.loadStatistics();
+        await this.loadNotifications();
+
+        // Setup target change handler
+        document.getElementById('notificationTarget').addEventListener('change', (e) => {
+            document.getElementById('userIdGroup').style.display = e.target.value === 'SPECIFIC' ? 'block' : 'none';
+        });
+    },
+
+    async loadStatistics() {
+        try {
+            const stats = await ApiClient.request(API_ENDPOINTS.notifications.statistics);
+            document.getElementById('totalNotifications').textContent = stats.total || 0;
+            document.getElementById('sentNotifications').textContent = stats.sent || 0;
+            document.getElementById('readNotifications').textContent = stats.read || 0;
+            document.getElementById('todayNotifications').textContent = stats.today || 0;
+        } catch (error) {
+            console.error('Load statistics error:', error);
+        }
+    },
+
+    async loadNotifications() {
+        try {
+            Loading.show();
+            const params = {
+                page: window.notificationsPageState.currentPage,
+                size: window.notificationsPageState.pageSize,
+                ...window.notificationsPageState.filters
+            };
+
+            const response = await ApiClient.request(API_ENDPOINTS.notifications.list, {
+                method: 'GET',
+                params
+            });
+
+            this.renderTable(response.records || []);
+            this.renderPagination(response.total || 0);
+        } catch (error) {
+            Toast.error('加载通知列表失败: ' + error.message);
+            document.getElementById('notificationsTableBody').innerHTML = `
+                <tr><td colspan="7" class="text-center text-danger">加载失败: ${error.message}</td></tr>
+            `;
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    renderTable(notifications) {
+        const tbody = document.getElementById('notificationsTableBody');
+        if (notifications.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = notifications.map(n => `
+            <tr>
+                <td>${n.id}</td>
+                <td><span class="badge badge-${this.getTypeColor(n.type)}">${this.getTypeText(n.type)}</span></td>
+                <td>${n.title || '-'}</td>
+                <td>${n.receiverName || '全体用户'}</td>
+                <td><span class="badge badge-${n.isRead ? 'success' : 'warning'}">${n.isRead ? '已读' : '未读'}</span></td>
+                <td>${Utils.formatDate(n.createTime)}</td>
+                <td>
+                    <button class="btn btn-sm btn-info" onclick="window.notificationsPageHandlers.showDetail(${n.id})">详情</button>
+                    <button class="btn btn-sm btn-danger" onclick="window.notificationsPageHandlers.deleteNotification(${n.id})">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    },
+
+    renderPagination(total) {
+        const totalPages = Math.ceil(total / window.notificationsPageState.pageSize);
+        const container = document.getElementById('paginationContainer');
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = PaginationComponent.render(
+            window.notificationsPageState.currentPage,
+            totalPages,
+            total,
+            (page) => {
+                window.notificationsPageState.currentPage = page;
+                this.loadNotifications();
+            }
+        );
+    },
+
+    getTypeColor(type) {
+        return { 'SYSTEM': 'primary', 'ADOPTION': 'success', 'VERIFICATION': 'info', 'RESCUE': 'warning' }[type] || 'secondary';
+    },
+
+    getTypeText(type) {
+        return { 'SYSTEM': '系统通知', 'ADOPTION': '领养通知', 'VERIFICATION': '认证通知', 'RESCUE': '救助通知' }[type] || type;
+    },
+
+    search() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        const type = document.getElementById('typeFilter').value;
+        window.notificationsPageState.filters = {};
+        if (keyword) window.notificationsPageState.filters.keyword = keyword;
+        if (type) window.notificationsPageState.filters.type = type;
+        window.notificationsPageState.currentPage = 1;
+        this.loadNotifications();
+    },
+
+    reset() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('typeFilter').value = '';
+        window.notificationsPageState.filters = {};
+        window.notificationsPageState.currentPage = 1;
+        this.loadNotifications();
+    },
+
+    async showDetail(id) {
+        try {
+            Loading.show();
+            const n = await ApiClient.request(API_ENDPOINTS.notifications.detail(id));
+            document.getElementById('detailContent').innerHTML = `
+                <div class="detail-section">
+                    <h4>通知信息</h4>
+                    <div class="detail-row"><span class="detail-label">类型:</span><span class="badge badge-${this.getTypeColor(n.type)}">${this.getTypeText(n.type)}</span></div>
+                    <div class="detail-row"><span class="detail-label">标题:</span><span class="detail-value">${n.title || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">内容:</span><span class="detail-value">${n.content || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">接收者:</span><span class="detail-value">${n.receiverName || '全体用户'}</span></div>
+                    <div class="detail-row"><span class="detail-label">状态:</span><span class="badge badge-${n.isRead ? 'success' : 'warning'}">${n.isRead ? '已读' : '未读'}</span></div>
+                    <div class="detail-row"><span class="detail-label">发送时间:</span><span class="detail-value">${Utils.formatDate(n.createTime)}</span></div>
+                    ${n.readTime ? `<div class="detail-row"><span class="detail-label">读取时间:</span><span class="detail-value">${Utils.formatDate(n.readTime)}</span></div>` : ''}
+                </div>
+            `;
+            Modal.open('detailModal');
+        } catch (error) {
+            Toast.error('加载详情失���: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    showCreateModal() {
+        document.getElementById('notificationForm').reset();
+        document.getElementById('userIdGroup').style.display = 'none';
+        Modal.open('createModal');
+    },
+
+    async sendNotification() {
+        const type = document.getElementById('notificationType').value;
+        const title = document.getElementById('notificationTitle').value.trim();
+        const content = document.getElementById('notificationContent').value.trim();
+        const target = document.getElementById('notificationTarget').value;
+        const userId = document.getElementById('notificationUserId').value;
+
+        if (!type || !title || !content || !target) {
+            Toast.warning('请填写所有必填项');
+            return;
+        }
+
+        if (target === 'SPECIFIC' && !userId) {
+            Toast.warning('请输入用户ID');
+            return;
+        }
+
+        try {
+            Loading.show();
+            const data = { type, title, content };
+            if (target === 'SPECIFIC') {
+                data.userId = parseInt(userId);
+            }
+
+            await ApiClient.request(API_ENDPOINTS.notifications.send, {
+                method: 'POST',
+                body: data
+            });
+
+            Toast.success('发送成功');
+            Modal.close('createModal');
+            await this.loadStatistics();
+            await this.loadNotifications();
+        } catch (error) {
+            Toast.error('发送失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    async deleteNotification(id) {
+        if (!confirm('确定要删除这条通知吗？')) return;
+
+        try {
+            Loading.show();
+            await ApiClient.request(API_ENDPOINTS.notifications.delete(id), {
+                method: 'DELETE'
+            });
+            Toast.success('删除成功');
+            await this.loadStatistics();
+            await this.loadNotifications();
+        } catch (error) {
+            Toast.error('删除失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    }
+};
+
+window.notificationsPageHandlers.init();
+</script>

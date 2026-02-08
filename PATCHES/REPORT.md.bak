@@ -1,0 +1,469 @@
+# 部署审计报告
+
+## 0. 环境与网络诊断（仅检测，不修改）
+
+### scutil --proxy 输出
+```
+<dictionary> {
+  ExceptionsList : <array> {
+    0 : *zhihu.com,*zhimg.com,*jd.com,100ime-iat-api.xfyun.cn,*360buyimg.com,localhost,*.local,127.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.2*,172.30.*,172.31.*,192.168.*
+  }
+  ExcludeSimpleHostnames : 1
+  FTPPassive : 1
+  HTTPEnable : 1
+  HTTPPort : 7890
+  HTTPProxy : 127.0.0.1
+  HTTPSEnable : 1
+  HTTPSPort : 7890
+  HTTPSProxy : 127.0.0.1
+  ProxyAutoConfigEnable : 1
+  ProxyAutoConfigURLString : http://wpad/wpad.dat
+  ProxyAutoDiscoveryEnable : 1
+  SOCKSEnable : 1
+  SOCKSPort : 7890
+  SOCKSProxy : 127.0.0.1
+}
+```
+
+### networksetup 代理状态
+```
+== Wi-Fi ==
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+URL: (null)
+Enabled: No
+== Thunderbolt Bridge ==
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+URL: (null)
+Enabled: No
+== USB 10/100/1000 LAN ==
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+URL: (null)
+Enabled: No
+```
+
+### 7890 端口监听
+```
+(无输出)
+```
+
+### 判定
+- 系统代理（HTTP/HTTPS/SOCKS）指向 127.0.0.1:7890 且已启用，但 7890 端口无监听。
+- 该配置属于“断网高风险配置”，可能导致 Docker 拉镜像、npm install 等联网行为失败。
+
+### 手动修复步骤（不自动修改）
+1) 打开 系统设置 → 网络 → 选中当前网络（如 Wi‑Fi）→ 详情 → 代理。
+2) 取消勾选：网页代理(HTTP)、安全网页代理(HTTPS)、SOCKS 代理。
+3) 如果必须使用代理，请确认本机代理程序已启动且监听 127.0.0.1:7890。
+4) 关闭“自动代理发现/自动代理配置”如不需要。
+
+## 1. Docker Compose 审计与修正（待执行）
+
+## 2. Docker 启动与健康检查（待执行）
+
+## 3. Playwright 自动化审计（待执行）
+
+## 4. 管理端/用户端检查表（待执行）
+
+## 5. 云养/打赏/捐献 功能检索结论（待执行）
+
+## 6. 修复建议与变更记录（待执行）
+
+## 1. Docker Compose 与 Nginx 审计
+
+### docker-compose.yml（原样）
+```
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: catrescue-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: "cat_rescue"
+      TZ: "Asia/Shanghai"
+    command: >-
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./cat_rescue.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+
+  backend:
+    image: eclipse-temurin:17-jre
+    container_name: catrescue-backend
+    restart: unless-stopped
+    working_dir: /app/backend
+    environment:
+      TZ: "Asia/Shanghai"
+      JAVA_TOOL_OPTIONS: "-Duser.timezone=Asia/Shanghai"
+    volumes:
+      - ./:/app
+    command:
+      - java
+      - -jar
+      - cat-rescue.jar
+      - --spring.profiles.active=prod
+      - --spring.datasource.url=jdbc:mysql://db:3306/cat_rescue?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      - --spring.datasource.username=root
+      - --spring.datasource.password=123456
+      - --spring.web.resources.static-locations=classpath:/static/,file:/app/frontend/,file:/app/uploads/
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+
+  frontend:
+    image: nginx:alpine
+    container_name: catrescue-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./uploads:/usr/share/nginx/html/uploads:ro
+      - ./nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro
+
+  admin-frontend:
+    image: nginx:alpine
+    container_name: catrescue-admin
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5001:80"
+    volumes:
+      - ./admin-frontend:/usr/share/nginx/html:ro
+      - ./uploads:/usr/share/nginx/html/uploads:ro
+      - ./nginx/admin.conf:/etc/nginx/conf.d/default.conf:ro
+```
+
+### nginx/frontend.conf（原样）
+```
+server {
+  listen 80;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  client_max_body_size 20m;
+
+  # API proxy to backend
+  location /api/ {
+    proxy_pass http://backend:8080/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+
+  # Serve uploaded files
+  location /uploads/ {
+    alias /usr/share/nginx/html/uploads/;
+    autoindex off;
+  }
+
+  # SPA fallback
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}
+```
+
+### nginx/admin.conf（原样）
+```
+server {
+  listen 80;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index login.html;
+
+  client_max_body_size 20m;
+
+  # Optional API proxy (for any relative /api calls)
+  location /api/ {
+    proxy_pass http://backend:8080/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+
+  # Serve uploaded files
+  location /uploads/ {
+    alias /usr/share/nginx/html/uploads/;
+    autoindex off;
+  }
+
+  # Static files (multi-page)
+  location / {
+    try_files $uri $uri/ /login.html;
+  }
+}
+```
+
+### 审计结论
+- 未发现 nginx 语法错误；`proxy_set_header Host $host;` 已存在且语法正确。
+- 当前无需修改 nginx 配置，未产生补丁。
+
+## 2. Docker 启动与健康检查
+
+### docker compose up -d 输出
+```
+time="2026-02-08T09:10:52+08:00" level=warning msg="/Users/yuchenxu/Desktop/猫咪领养系统-部署包/deploy/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ db Pulling 
+ backend Pulling 
+ admin-frontend Pulling 
+ frontend Pulling 
+ backend Error Get "https://registry-1.docker.io/v2/": rejecting registry-1.docker.io:443 because traffic from evaluating PAC file: getting PAC interpreter: Get "http://wpad/wpad.dat": dial tcp: lookup wpad: no such host
+ db  Interrupted
+ admin-frontend  Interrupted
+ frontend  Interrupted
+Error response from daemon: Get "https://registry-1.docker.io/v2/": rejecting registry-1.docker.io:443 because traffic from evaluating PAC file: getting PAC interpreter: Get "http://wpad/wpad.dat": dial tcp: lookup wpad: no such host
+```
+
+### docker compose ps 输出
+```
+time="2026-02-08T09:11:03+08:00" level=warning msg="/Users/yuchenxu/Desktop/猫咪领养系统-部署包/deploy/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+NAME      IMAGE     COMMAND   SERVICE   CREATED   STATUS    PORTS
+```
+
+### docker compose logs（db/backend/frontend/admin-frontend）
+```
+time="2026-02-08T09:11:07+08:00" level=warning msg="/Users/yuchenxu/Desktop/猫咪领养系统-部署包/deploy/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+```
+
+### curl 健康检查
+```
+== http://localhost:5000/ ==
+HTTP 403
+== http://localhost:5001/ ==
+HTTP 200
+== http://localhost:8080/ ==
+HTTP 401
+```
+
+### 结论与建议
+- Docker 拉镜像失败，错误指向系统 PAC/WPAD 代理解析失败（wpad/wpad.dat）。这是典型“系统代理坏了”导致无法联网的表现。
+- 当前 docker compose 未成功启动；上面的 HTTP 响应可能来自已存在的本地服务，无法视为本次 Docker 隔离环境的证据。
+- 建议手动检查并关闭“自动代理发现/自动代理配置”，或确保代理程序与 PAC 服务可用后重试 docker compose up -d。
+
+## 7. 代理/WPAD 核验（追加）
+
+### scutil --proxy
+```
+<dictionary> {
+  ExceptionsList : <array> {
+    0 : *zhihu.com,*zhimg.com,*jd.com,100ime-iat-api.xfyun.cn,*360buyimg.com,localhost,*.local,127.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.2*,172.30.*,172.31.*,192.168.*
+  }
+  ExcludeSimpleHostnames : 1
+  FTPPassive : 1
+  HTTPEnable : 1
+  HTTPPort : 7890
+  HTTPProxy : 127.0.0.1
+  HTTPSEnable : 1
+  HTTPSPort : 7890
+  HTTPSProxy : 127.0.0.1
+  ProxyAutoConfigEnable : 1
+  ProxyAutoConfigURLString : http://wpad/wpad.dat
+  ProxyAutoDiscoveryEnable : 1
+  SOCKSEnable : 1
+  SOCKSPort : 7890
+  SOCKSProxy : 127.0.0.1
+}
+```
+
+### networksetup -getautoproxyurl "Wi-Fi"
+```
+URL: (null)
+Enabled: No
+```
+
+### networksetup -getwebproxy "Wi-Fi"
+```
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+```
+
+### networksetup -getsecurewebproxy "Wi-Fi"
+```
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+```
+
+### networksetup -getsocksfirewallproxy "Wi-Fi"
+```
+Enabled: Yes
+Server: 127.0.0.1
+Port: 7890
+Authenticated Proxy Enabled: 0
+```
+
+## 8. 本机代理端口监听
+
+### lsof -nP -iTCP:7890 -sTCP:LISTEN || true
+```
+```
+
+### lsof -nP -iTCP:9090 -sTCP:LISTEN || true
+```
+```
+
+## 9. Docker 受代理影响的 A/B 证据
+
+### A. env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy docker pull nginx:alpine
+```
+Error response from daemon: Get "https://registry-1.docker.io/v2/": rejecting registry-1.docker.io:443 because traffic from evaluating PAC file: getting PAC interpreter: Get "http://wpad/wpad.dat": dial tcp: lookup wpad: no such host
+```
+
+### B-1. Docker 代理状态（docker info | rg -i 'proxy'）
+```
+ HTTP Proxy: http.docker.internal:3128
+ HTTPS Proxy: http.docker.internal:3128
+ No Proxy: hubproxy.docker.internal
+  hubproxy.docker.internal:5555
+```
+
+### B-2. Docker Desktop 仅禁用系统代理（手动步骤，未自动执行）
+- 打开 Docker Desktop → Settings → Resources / Proxies（或 General/Network）
+- 取消勾选 Use system proxy（或 Remove proxy settings）
+- 如有 HTTP/HTTPS Proxy 字段，清空
+- Apply & Restart Docker Desktop
+
+### B-3. 再次执行 docker pull（仍使用 env -u 清空环境变量）
+```
+Error response from daemon: Get "https://registry-1.docker.io/v2/": rejecting registry-1.docker.io:443 because traffic from evaluating PAC file: getting PAC interpreter: Get "http://wpad/wpad.dat": dial tcp: lookup wpad: no such host
+```
+
+## 10. WPAD/PAC 最小可回滚手动关闭步骤（不自动修改）
+- 系统设置 → 网络 → 选择当前网络（Wi‑Fi）→ 详情 → 代理
+- 关闭：自动代理发现（Proxy Auto‑Discovery）
+- 关闭：自动代理配置（PAC）
+- 若不使用本地代理，关闭：网页代理(HTTP)/安全网页代理(HTTPS)/SOCKS 代理
+- 需要代理时：仅保留你实际使用的代理，并确保本机端口在监听
+
+### 关闭后复核（等待你确认已操作后再执行）
+将重新执行：scutil --proxy 与 4 条 networksetup 命令以证明已关闭。
+
+## 11. Nginx 配置内容与语法检查
+
+### deploy/nginx/frontend.conf（前 120 行）
+```
+server {
+  listen 80;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  client_max_body_size 20m;
+
+  # API proxy to backend
+  location /api/ {
+    proxy_pass http://backend:8080/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+
+  # Serve uploaded files
+  location /uploads/ {
+    alias /usr/share/nginx/html/uploads/;
+    autoindex off;
+  }
+
+  # SPA fallback
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}
+```
+
+### deploy/nginx/admin.conf（前 120 行）
+```
+server {
+  listen 80;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index login.html;
+
+  client_max_body_size 20m;
+
+  # Optional API proxy (for any relative /api calls)
+  location /api/ {
+    proxy_pass http://backend:8080/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+
+  # Serve uploaded files
+  location /uploads/ {
+    alias /usr/share/nginx/html/uploads/;
+    autoindex off;
+  }
+
+  # Static files (multi-page)
+  location / {
+    try_files $uri $uri/ /login.html;
+  }
+}
+```
+
+### proxy_set_header 证据（rg -n "proxy_set_header Host" nginx/*.conf）
+```
+nginx/admin.conf:13:    proxy_set_header Host $host;
+nginx/frontend.conf:13:    proxy_set_header Host $host;
+```
+
+### nginx 语法检查（nginx -t -c deploy/nginx/nginx.test.conf）
+```
+nginx: [emerg] host not found in upstream "backend" in /Users/yuchenxu/Desktop/猫咪领养系统-部署包/deploy/nginx/frontend.conf:12
+nginx: configuration file /Users/yuchenxu/Desktop/猫咪领养系统-部署包/deploy/nginx/nginx.test.conf test failed
+```
+
+## 12. 变更记录与备份
+- 备份：PATCHES/REPORT.md.bak（继续追加前的报告快照）
+- 新增：nginx/nginx.test.conf（仅用于 nginx -t 语法检查）

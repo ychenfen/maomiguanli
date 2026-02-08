@@ -1,0 +1,366 @@
+<!-- Adoption Management Page -->
+<div class="page-container">
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">📝</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="totalAdoptions">0</div>
+                <div class="stat-card-label">总申请数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">⏳</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="pendingAdoptions">0</div>
+                <div class="stat-card-label">待审核</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">✓</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="approvedAdoptions">0</div>
+                <div class="stat-card-label">已通过</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">✗</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="rejectedAdoptions">0</div>
+                <div class="stat-card-label">已拒绝</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card">
+        <div class="card-body">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索申请人、猫咪名称...">
+                    <select id="statusFilter" class="form-control">
+                        <option value="">全部状态</option>
+                        <option value="PENDING">待审核</option>
+                        <option value="APPROVED">已通过</option>
+                        <option value="REJECTED">已拒绝</option>
+                        <option value="CANCELLED">已取消</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="window.adoptionPageHandlers.search()">搜索</button>
+                    <button class="btn btn-secondary" onclick="window.adoptionPageHandlers.reset()">重置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Adoption Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>申请人</th>
+                            <th>猫��</th>
+                            <th>联系方式</th>
+                            <th>状态</th>
+                            <th>申请时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adoptionTableBody">
+                        <tr>
+                            <td colspan="7" class="text-center">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-container" id="paginationContainer"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal" id="detailModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+            <h3>申请详情</h3>
+            <button class="modal-close" onclick="Modal.close('detailModal')">&times;</button>
+        </div>
+        <div class="modal-body" id="detailContent">
+            <!-- Content will be loaded dynamically -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close('detailModal')">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal" id="reviewModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 id="reviewTitle">审核申请</h3>
+            <button class="modal-close" onclick="Modal.close('reviewModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="reviewId">
+            <input type="hidden" id="reviewAction">
+            <div class="form-group">
+                <label>审核意见</label>
+                <textarea id="reviewComment" class="form-control" rows="4" placeholder="请输入审核意见..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close('reviewModal')">取消</button>
+            <button class="btn btn-primary" onclick="window.adoptionPageHandlers.submitReview()">提交</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize page state
+window.adoptionPageState = window.adoptionPageState || {
+    currentPage: 1,
+    pageSize: 10,
+    filters: {}
+};
+
+// Page handlers
+window.adoptionPageHandlers = {
+    async init() {
+        await this.loadStatistics();
+        await this.loadAdoptions();
+    },
+
+    async loadStatistics() {
+        try {
+            const stats = await ApiClient.request(API_ENDPOINTS.adoptions.statistics);
+            document.getElementById('totalAdoptions').textContent = stats.total || 0;
+            document.getElementById('pendingAdoptions').textContent = stats.pending || 0;
+            document.getElementById('approvedAdoptions').textContent = stats.approved || 0;
+            document.getElementById('rejectedAdoptions').textContent = stats.rejected || 0;
+        } catch (error) {
+            console.error('Load statistics error:', error);
+        }
+    },
+
+    async loadAdoptions() {
+        try {
+            Loading.show();
+            const params = {
+                page: window.adoptionPageState.currentPage,
+                size: window.adoptionPageState.pageSize,
+                ...window.adoptionPageState.filters
+            };
+
+            const response = await ApiClient.request(API_ENDPOINTS.adoptions.list, {
+                method: 'GET',
+                params
+            });
+
+            this.renderTable(response.records || []);
+            this.renderPagination(response.total || 0);
+        } catch (error) {
+            Toast.error('加载申请列表失败: ' + error.message);
+            document.getElementById('adoptionTableBody').innerHTML = `
+                <tr><td colspan="7" class="text-center text-danger">加载失败: ${error.message}</td></tr>
+            `;
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    renderTable(adoptions) {
+        const tbody = document.getElementById('adoptionTableBody');
+        if (adoptions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = adoptions.map(adoption => `
+            <tr>
+                <td>${adoption.id}</td>
+                <td>${adoption.applicantName || '-'}</td>
+                <td>${adoption.catName || '-'}</td>
+                <td>${adoption.contactPhone || '-'}</td>
+                <td>
+                    <span class="badge badge-${this.getStatusColor(adoption.status)}">
+                        ${this.getStatusText(adoption.status)}
+                    </span>
+                </td>
+                <td>${Utils.formatDate(adoption.createTime)}</td>
+                <td>
+                    <button class="btn btn-sm btn-info" onclick="window.adoptionPageHandlers.showDetail(${adoption.id})">详情</button>
+                    ${adoption.status === 'PENDING' ? `
+                        <button class="btn btn-sm btn-success" onclick="window.adoptionPageHandlers.showReviewModal(${adoption.id}, 'approve')">通过</button>
+                        <button class="btn btn-sm btn-danger" onclick="window.adoptionPageHandlers.showReviewModal(${adoption.id}, 'reject')">拒绝</button>
+                    ` : ''}
+                </td>
+            </tr>
+        `).join('');
+    },
+
+    renderPagination(total) {
+        const totalPages = Math.ceil(total / window.adoptionPageState.pageSize);
+        const container = document.getElementById('paginationContainer');
+
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        container.innerHTML = PaginationComponent.render(
+            window.adoptionPageState.currentPage,
+            totalPages,
+            total,
+            (page) => {
+                window.adoptionPageState.currentPage = page;
+                this.loadAdoptions();
+            }
+        );
+    },
+
+    getStatusColor(status) {
+        const colors = {
+            'PENDING': 'warning',
+            'APPROVED': 'success',
+            'REJECTED': 'danger',
+            'CANCELLED': 'secondary'
+        };
+        return colors[status] || 'secondary';
+    },
+
+    getStatusText(status) {
+        const texts = {
+            'PENDING': '待审核',
+            'APPROVED': '已通过',
+            'REJECTED': '已拒绝',
+            'CANCELLED': '已取消'
+        };
+        return texts[status] || status;
+    },
+
+    search() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        const status = document.getElementById('statusFilter').value;
+
+        window.adoptionPageState.filters = {};
+        if (keyword) window.adoptionPageState.filters.keyword = keyword;
+        if (status) window.adoptionPageState.filters.status = status;
+
+        window.adoptionPageState.currentPage = 1;
+        this.loadAdoptions();
+    },
+
+    reset() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = '';
+        window.adoptionPageState.filters = {};
+        window.adoptionPageState.currentPage = 1;
+        this.loadAdoptions();
+    },
+
+    async showDetail(id) {
+        try {
+            Loading.show();
+            const adoption = await ApiClient.request(API_ENDPOINTS.adoptions.detail(id));
+
+            document.getElementById('detailContent').innerHTML = `
+                <div class="detail-section">
+                    <h4>申请信息</h4>
+                    <div class="detail-row">
+                        <span class="detail-label">申请ID:</span>
+                        <span class="detail-value">${adoption.id}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">申请人:</span>
+                        <span class="detail-value">${adoption.applicantName || '-'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">猫咪:</span>
+                        <span class="detail-value">${adoption.catName || '-'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">联系电话:</span>
+                        <span class="detail-value">${adoption.contactPhone || '-'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">联系地址:</span>
+                        <span class="detail-value">${adoption.contactAddress || '-'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">申请理由:</span>
+                        <span class="detail-value">${adoption.reason || '-'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">状态:</span>
+                        <span class="badge badge-${this.getStatusColor(adoption.status)}">
+                            ${this.getStatusText(adoption.status)}
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">申请时间:</span>
+                        <span class="detail-value">${Utils.formatDate(adoption.createTime)}</span>
+                    </div>
+                    ${adoption.reviewComment ? `
+                        <div class="detail-row">
+                            <span class="detail-label">审核意见:</span>
+                            <span class="detail-value">${adoption.reviewComment}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            Modal.open('detailModal');
+        } catch (error) {
+            Toast.error('加载详情失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    showReviewModal(id, action) {
+        document.getElementById('reviewId').value = id;
+        document.getElementById('reviewAction').value = action;
+        document.getElementById('reviewTitle').textContent = action === 'approve' ? '通过申请' : '拒绝申请';
+        document.getElementById('reviewComment').value = '';
+        Modal.open('reviewModal');
+    },
+
+    async submitReview() {
+        const id = document.getElementById('reviewId').value;
+        const action = document.getElementById('reviewAction').value;
+        const comment = document.getElementById('reviewComment').value.trim();
+
+        if (!comment) {
+            Toast.warning('请输入审核意见');
+            return;
+        }
+
+        try {
+            Loading.show();
+            const endpoint = action === 'approve'
+                ? API_ENDPOINTS.adoptions.approve(id)
+                : API_ENDPOINTS.adoptions.reject(id);
+
+            await ApiClient.request(endpoint, {
+                method: 'POST',
+                body: { comment }
+            });
+
+            Toast.success(action === 'approve' ? '已通过申请' : '已拒绝申请');
+            Modal.close('reviewModal');
+            await this.loadStatistics();
+            await this.loadAdoptions();
+        } catch (error) {
+            Toast.error('操作失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    }
+};
+
+// Initialize page
+window.adoptionPageHandlers.init();
+</script>

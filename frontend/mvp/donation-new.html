@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>发起捐献</title>
+  <link rel="stylesheet" href="/mvp/mvp.css" />
+  <script src="/config.js"></script>
+  <script src="/mvp/mvp.js"></script>
+</head>
+<body>
+  <header>
+    <h1>发起捐献</h1>
+    <nav>
+      <a href="/mvp/mvp-login.html">登录</a>
+      <a href="/mvp/donation-projects.html">项目列表</a>
+      <a href="/mvp/donation-mine.html">我的捐献</a>
+    </nav>
+  </header>
+
+  <div class="card">
+    <p class="small">支持捐献到众筹项目或指定猫咪（二选一）。需要登录 token。</p>
+    <label>crowdfundingId</label>
+    <input id="crowdfundingId" placeholder="可选" />
+    <label>catId</label>
+    <input id="catId" placeholder="可选" />
+    <label>amount</label>
+    <input id="amount" placeholder="例如 100.00" />
+    <label>paymentMethod</label>
+    <select id="paymentMethod">
+      <option value="WECHAT">WECHAT</option>
+      <option value="ALIPAY">ALIPAY</option>
+      <option value="OTHER">OTHER</option>
+    </select>
+    <label>transactionId</label>
+    <input id="transactionId" placeholder="可选" />
+    <label>isAnonymous</label>
+    <select id="isAnonymous">
+      <option value="false">false</option>
+      <option value="true">true</option>
+    </select>
+    <label>message</label>
+    <textarea id="message"></textarea>
+    <button id="submitBtn">提交捐献</button>
+  </div>
+
+  <div class="card">
+    <pre id="result"></pre>
+  </div>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const payload = {
+        crowdfundingId: document.getElementById('crowdfundingId').value || null,
+        catId: document.getElementById('catId').value || null,
+        amount: document.getElementById('amount').value || null,
+        paymentMethod: document.getElementById('paymentMethod').value || null,
+        transactionId: document.getElementById('transactionId').value || null,
+        isAnonymous: document.getElementById('isAnonymous').value === 'true',
+        message: document.getElementById('message').value || null
+      };
+      const data = await MVP.apiPost('/donation', payload);
+      resultEl.textContent = JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>

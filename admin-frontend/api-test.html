@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API连接测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .test-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-card h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #e8f5e9;
+            color: #4caf50;
+        }
+        .status.error {
+            background: #ffebee;
+            color: #f44336;
+        }
+        .status.pending {
+            background: #fff3e0;
+            color: #ff9800;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 管理后台API连接测试</h1>
+
+    <div class="test-card">
+        <h2>1. 后端服务健康检查</h2>
+        <p>状态: <span id="healthStatus" class="status pending">检测中...</span></p>
+        <button onclick="testHealth()">重新检测</button>
+        <pre id="healthResult">等待检测...</pre>
+    </div>
+
+    <div class="test-card">
+        <h2>2. 登录API测试</h2>
+        <p>状态: <span id="loginStatus" class="status pending">未测试</span></p>
+        <button onclick="testLogin()">测试登录</button>
+        <pre id="loginResult">点击按钮测试登录...</pre>
+    </div>
+
+    <div class="test-card">
+        <h2>3. 仪表板统计API测试</h2>
+        <p>状态: <span id="dashboardStatus" class="status pending">未测试</span></p>
+        <button onclick="testDashboard()">测试仪表板</button>
+        <pre id="dashboardResult">需要先登录...</pre>
+    </div>
+
+    <div class="test-card">
+        <h2>4. 用户列表API测试</h2>
+        <p>状态: <span id="usersStatus" class="status pending">未测试</span></p>
+        <button onclick="testUsers()">测试用户列表</button>
+        <pre id="usersResult">需要先登录...</pre>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        const API_BASE = (window.__API_BASE__ || '/api').replace(/\/$/, '');
+        let token = null;
+
+        // 测试后端健康状态
+        async function testHealth() {
+            const statusEl = document.getElementById('healthStatus');
+            const resultEl = document.getElementById('healthResult');
+
+            statusEl.className = 'status pending';
+            statusEl.textContent = '检测中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const result = await response.json();
+
+                statusEl.className = 'status success';
+                statusEl.textContent = '✓ 正常';
+                resultEl.textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '✗ 失败';
+                resultEl.textContent = `错误: ${error.message}\n\n请确保后端服务已启动`;
+            }
+        }
+
+        // 测试登录API
+        async function testLogin() {
+            const statusEl = document.getElementById('loginStatus');
+            const resultEl = document.getElementById('loginResult');
+
+            statusEl.className = 'status pending';
+            statusEl.textContent = '测试中...';
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', 'admin');
+                formData.append('password', '123456');
+
+                const response = await fetch(`${API_BASE}/users/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formData.toString()
+                });
+
+                const result = await response.json();
+
+                if (result.code === 200) {
+                    token = result.data.token;
+                    localStorage.setItem('admin_token', token);
+                    localStorage.setItem('admin_user', JSON.stringify(result.data.user));
+
+                    statusEl.className = 'status success';
+                    statusEl.textContent = '✓ 登录成功';
+                    resultEl.textContent = JSON.stringify(result, null, 2);
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = '✗ 登录失败';
+                    resultEl.textContent = JSON.stringify(result, null, 2);
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '✗ 失败';
+                resultEl.textContent = `错误: ${error.message}`;
+            }
+        }
+
+        // 测试仪表板API
+        async function testDashboard() {
+            const statusEl = document.getElementById('dashboardStatus');
+            const resultEl = document.getElementById('dashboardResult');
+
+            if (!token) {
+                token = localStorage.getItem('admin_token');
+            }
+
+            if (!token) {
+                resultEl.textContent = '请先测试登录！';
+                return;
+            }
+
+            statusEl.className = 'status pending';
+            statusEl.textContent = '测试中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/dashboard/statistics`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.code === 200) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = '✓ 成功';
+                    resultEl.textContent = JSON.stringify(result, null, 2);
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = '✗ 失败';
+                    resultEl.textContent = JSON.stringify(result, null, 2);
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '✗ 失败';
+                resultEl.textContent = `错误: ${error.message}`;
+            }
+        }
+
+        // 测试用户列表API
+        async function testUsers() {
+            const statusEl = document.getElementById('usersStatus');
+            const resultEl = document.getElementById('usersResult');
+
+            if (!token) {
+                token = localStorage.getItem('admin_token');
+            }
+
+            if (!token) {
+                resultEl.textContent = '请先测试登录！';
+                return;
+            }
+
+            statusEl.className = 'status pending';
+            statusEl.textContent = '测试中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/users?page=1&size=10`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.code === 200) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = '✓ 成功';
+                    resultEl.textContent = JSON.stringify(result, null, 2);
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = '✗ 失败';
+                    resultEl.textContent = JSON.stringify(result, null, 2);
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '✗ 失败';
+                resultEl.textContent = `错误: ${error.message}`;
+            }
+        }
+
+        // 页面加载时自动测试健康状态
+        window.onload = () => {
+            testHealth();
+            // 如果已经有token，自动测试其他API
+            token = localStorage.getItem('admin_token');
+            if (token) {
+                document.getElementById('loginStatus').className = 'status success';
+                document.getElementById('loginStatus').textContent = '✓ 已登录';
+                document.getElementById('loginResult').textContent = '使用已保存的token';
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+import{s as o}from"./index-BeZeSF5x.js";function p(t){return o({url:"/adoption-applications",method:"post",data:t})}function a(t){return o({url:"/adoption-applications/my-applications",method:"get",params:t})}function n(t){return o({url:`/adoption-applications/${t}/withdraw`,method:"put"})}export{p as a,n as c,a as g};

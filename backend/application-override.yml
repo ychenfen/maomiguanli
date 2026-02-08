@@ -1,0 +1,25 @@
+# 覆盖配置 - 允许访问所有静态资源
+spring:
+  security:
+    filter:
+      order: -100
+  web:
+    resources:
+      static-locations: file:../frontend/,file:../uploads/,classpath:/static/
+      add-mappings: true
+  mvc:
+    static-path-pattern: /**
+
+# 允许的公开路径
+security:
+  permit-all-patterns:
+    - "/"
+    - "/index.html"
+    - "/assets/**"
+    - "/images/**"
+    - "/uploads/**"
+    - "/static/**"
+    - "/*.ico"
+    - "/*.svg"
+    - "/*.js"
+    - "/*.css"

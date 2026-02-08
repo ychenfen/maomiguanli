@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>发起云养</title>
+  <link rel="stylesheet" href="/mvp/mvp.css" />
+  <script src="/config.js"></script>
+  <script src="/mvp/mvp.js"></script>
+</head>
+<body>
+  <header>
+    <h1>发起云养</h1>
+    <nav>
+      <a href="/mvp/mvp-login.html">登录</a>
+      <a href="/mvp/cloud-adoption-list.html">云养列表</a>
+    </nav>
+  </header>
+
+  <div class="card">
+    <p class="small">需要登录 token（localStorage.user_token）。</p>
+    <label>catId</label>
+    <input id="catId" placeholder="必填" />
+    <label>adoptionName</label>
+    <input id="adoptionName" placeholder="可选" />
+    <label>monthlyAmount</label>
+    <input id="monthlyAmount" placeholder="例如 99.00" />
+    <label>startDate</label>
+    <input id="startDate" placeholder="YYYY-MM-DD" />
+    <label>endDate</label>
+    <input id="endDate" placeholder="YYYY-MM-DD" />
+    <label>message</label>
+    <textarea id="message"></textarea>
+    <button id="submitBtn">提交云养</button>
+  </div>
+
+  <div class="card">
+    <pre id="result"></pre>
+  </div>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const payload = {
+        catId: Number(document.getElementById('catId').value),
+        adoptionName: document.getElementById('adoptionName').value || null,
+        monthlyAmount: document.getElementById('monthlyAmount').value || null,
+        startDate: document.getElementById('startDate').value || null,
+        endDate: document.getElementById('endDate').value || null,
+        message: document.getElementById('message').value || null
+      };
+      const data = await MVP.apiPost('/cloud-adoption', payload);
+      resultEl.textContent = JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>

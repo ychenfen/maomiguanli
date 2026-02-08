@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>打赏（复用捐献）</title>
+  <link rel="stylesheet" href="/mvp/mvp.css" />
+  <script src="/config.js"></script>
+  <script src="/mvp/mvp.js"></script>
+</head>
+<body>
+  <header>
+    <h1>打赏（复用 donation）</h1>
+    <nav>
+      <a href="/mvp/mvp-login.html">登录</a>
+      <a href="/mvp/donation-new.html">捐献</a>
+    </nav>
+  </header>
+
+  <div class="card">
+    <p class="small">打赏记录写入 donation 表（catId + amount）。需要登录 token。</p>
+    <label>catId</label>
+    <input id="catId" placeholder="必填" />
+    <label>amount</label>
+    <input id="amount" placeholder="例如 20.00" />
+    <label>message</label>
+    <textarea id="message" placeholder="可选"></textarea>
+    <button id="submitBtn">提交打赏</button>
+  </div>
+
+  <div class="card">
+    <pre id="result"></pre>
+  </div>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const payload = {
+        catId: document.getElementById('catId').value || null,
+        amount: document.getElementById('amount').value || null,
+        message: document.getElementById('message').value || null,
+        isAnonymous: false,
+        paymentMethod: 'OTHER'
+      };
+      const data = await MVP.apiPost('/donation', payload);
+      resultEl.textContent = JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>

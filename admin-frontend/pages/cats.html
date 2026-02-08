@@ -1,0 +1,404 @@
+<!-- Cat Management Page -->
+<div class="page-container">
+    <!-- Statistics Cards -->
+    <div class="stats-grid" id="catStats">
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">🐱</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="totalCats">0</div>
+                <div class="stat-card-label">总猫咪数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">✓</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="adoptableCats">0</div>
+                <div class="stat-card-label">可领养</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">❤️</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="adoptedCats">0</div>
+                <div class="stat-card-label">已领养</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">🏥</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="treatmentCats">0</div>
+                <div class="stat-card-label">治疗中</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Actions -->
+    <div class="card">
+        <div class="card-body">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索猫咪名称、品种、位置...">
+                    <select id="statusFilter" class="form-control">
+                        <option value="">全部状态</option>
+                        <option value="ADOPTABLE">可领养</option>
+                        <option value="ADOPTED">已领养</option>
+                        <option value="OBSERVATION">观察中</option>
+                        <option value="TREATMENT">治疗中</option>
+                    </select>
+                    <select id="genderFilter" class="form-control">
+                        <option value="">全部性别</option>
+                        <option value="MALE">公猫</option>
+                        <option value="FEMALE">母猫</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="window.catPageHandlers.search()">搜索</button>
+                    <button class="btn btn-secondary" onclick="window.catPageHandlers.reset()">重置</button>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn btn-success" onclick="window.catPageHandlers.showCreateModal()">+ 添加猫咪</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cat Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table" id="catTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>照片</th>
+                            <th>名称</th>
+                            <th>品种</th>
+                            <th>性别</th>
+                            <th>年龄</th>
+                            <th>状态</th>
+                            <th>位置</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="catTableBody">
+                        <tr>
+                            <td colspan="10" class="text-center">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-container" id="paginationContainer"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal" id="catModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+            <h3 id="modalTitle">添加猫咪</h3>
+            <button class="modal-close" onclick="Modal.close('catModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="catForm">
+                <input type="hidden" id="catId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>猫咪名称 *</label>
+                        <input type="text" id="catName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>品种 *</label>
+                        <input type="text" id="catBreed" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>性别 *</label>
+                        <select id="catGender" class="form-control" required>
+                            <option value="">请选择</option>
+                            <option value="MALE">公猫</option>
+                            <option value="FEMALE">母猫</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>年龄（月）*</label>
+                        <input type="number" id="catAge" class="form-control" min="0" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>状态 *</label>
+                        <select id="catStatus" class="form-control" required>
+                            <option value="ADOPTABLE">可领养</option>
+                            <option value="ADOPTED">已领养</option>
+                            <option value="OBSERVATION">观察中</option>
+                            <option value="TREATMENT">治疗中</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>位置 *</label>
+                        <input type="text" id="catLocation" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>描述</label>
+                    <textarea id="catDescription" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>照片URL</label>
+                    <input type="text" id="catPhotoUrl" class="form-control" placeholder="http://...">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close('catModal')">取消</button>
+            <button class="btn btn-primary" onclick="window.catPageHandlers.saveCat()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize page state
+window.catPageState = window.catPageState || {
+    currentPage: 1,
+    pageSize: 10,
+    filters: {}
+};
+
+// Page handlers
+window.catPageHandlers = {
+    async init() {
+        await this.loadStatistics();
+        await this.loadCats();
+    },
+
+    async loadStatistics() {
+        try {
+            const stats = await ApiClient.request(API_ENDPOINTS.cats.statistics);
+            document.getElementById('totalCats').textContent = stats.total || 0;
+            document.getElementById('adoptableCats').textContent = stats.adoptable || 0;
+            document.getElementById('adoptedCats').textContent = stats.adopted || 0;
+            document.getElementById('treatmentCats').textContent = stats.treatment || 0;
+        } catch (error) {
+            console.error('Load statistics error:', error);
+        }
+    },
+
+    async loadCats() {
+        try {
+            Loading.show();
+            const params = {
+                page: window.catPageState.currentPage,
+                size: window.catPageState.pageSize,
+                ...window.catPageState.filters
+            };
+
+            const response = await ApiClient.request(API_ENDPOINTS.cats.list, {
+                method: 'GET',
+                params
+            });
+
+            this.renderTable(response.records || []);
+            this.renderPagination(response.total || 0);
+        } catch (error) {
+            Toast.error('加载猫咪列表失败: ' + error.message);
+            document.getElementById('catTableBody').innerHTML = `
+                <tr><td colspan="10" class="text-center text-danger">加载失败: ${error.message}</td></tr>
+            `;
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    renderTable(cats) {
+        const tbody = document.getElementById('catTableBody');
+        if (cats.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center">暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = cats.map(cat => `
+            <tr>
+                <td>${cat.id}</td>
+                <td>
+                    ${cat.photoUrl ? `<img src="${cat.photoUrl}" alt="${cat.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : '无照片'}
+                </td>
+                <td>${cat.name}</td>
+                <td>${cat.breed || '-'}</td>
+                <td>${cat.gender === 'MALE' ? '公猫' : '母猫'}</td>
+                <td>${cat.age || 0}个月</td>
+                <td>
+                    <span class="badge badge-${this.getStatusColor(cat.status)}">
+                        ${this.getStatusText(cat.status)}
+                    </span>
+                </td>
+                <td>${cat.location || '-'}</td>
+                <td>${Utils.formatDate(cat.createTime)}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="window.catPageHandlers.showEditModal(${cat.id})">编辑</button>
+                    <button class="btn btn-sm btn-danger" onclick="window.catPageHandlers.deleteCat(${cat.id})">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    },
+
+    renderPagination(total) {
+        const totalPages = Math.ceil(total / window.catPageState.pageSize);
+        const container = document.getElementById('paginationContainer');
+
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        container.innerHTML = PaginationComponent.render(
+            window.catPageState.currentPage,
+            totalPages,
+            total,
+            (page) => {
+                window.catPageState.currentPage = page;
+                this.loadCats();
+            }
+        );
+    },
+
+    getStatusColor(status) {
+        const colors = {
+            'ADOPTABLE': 'success',
+            'ADOPTED': 'info',
+            'OBSERVATION': 'warning',
+            'TREATMENT': 'danger'
+        };
+        return colors[status] || 'secondary';
+    },
+
+    getStatusText(status) {
+        const texts = {
+            'ADOPTABLE': '可领养',
+            'ADOPTED': '已领养',
+            'OBSERVATION': '观察中',
+            'TREATMENT': '治疗中'
+        };
+        return texts[status] || status;
+    },
+
+    search() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        const status = document.getElementById('statusFilter').value;
+        const gender = document.getElementById('genderFilter').value;
+
+        window.catPageState.filters = {};
+        if (keyword) window.catPageState.filters.keyword = keyword;
+        if (status) window.catPageState.filters.status = status;
+        if (gender) window.catPageState.filters.gender = gender;
+
+        window.catPageState.currentPage = 1;
+        this.loadCats();
+    },
+
+    reset() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('genderFilter').value = '';
+        window.catPageState.filters = {};
+        window.catPageState.currentPage = 1;
+        this.loadCats();
+    },
+
+    showCreateModal() {
+        document.getElementById('modalTitle').textContent = '添加猫咪';
+        document.getElementById('catForm').reset();
+        document.getElementById('catId').value = '';
+        Modal.open('catModal');
+    },
+
+    async showEditModal(id) {
+        try {
+            Loading.show();
+            const cat = await ApiClient.request(API_ENDPOINTS.cats.detail(id));
+
+            document.getElementById('modalTitle').textContent = '编辑猫咪';
+            document.getElementById('catId').value = cat.id;
+            document.getElementById('catName').value = cat.name;
+            document.getElementById('catBreed').value = cat.breed || '';
+            document.getElementById('catGender').value = cat.gender;
+            document.getElementById('catAge').value = cat.age || 0;
+            document.getElementById('catStatus').value = cat.status;
+            document.getElementById('catLocation').value = cat.location || '';
+            document.getElementById('catDescription').value = cat.description || '';
+            document.getElementById('catPhotoUrl').value = cat.photoUrl || '';
+
+            Modal.open('catModal');
+        } catch (error) {
+            Toast.error('加载猫咪信息失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    async saveCat() {
+        const id = document.getElementById('catId').value;
+        const data = {
+            name: document.getElementById('catName').value.trim(),
+            breed: document.getElementById('catBreed').value.trim(),
+            gender: document.getElementById('catGender').value,
+            age: parseInt(document.getElementById('catAge').value),
+            status: document.getElementById('catStatus').value,
+            location: document.getElementById('catLocation').value.trim(),
+            description: document.getElementById('catDescription').value.trim(),
+            photoUrl: document.getElementById('catPhotoUrl').value.trim()
+        };
+
+        if (!data.name || !data.breed || !data.gender || !data.status || !data.location) {
+            Toast.warning('请填写所有必填项');
+            return;
+        }
+
+        try {
+            Loading.show();
+            if (id) {
+                await ApiClient.request(API_ENDPOINTS.cats.update(id), {
+                    method: 'PUT',
+                    body: data
+                });
+                Toast.success('更新成功');
+            } else {
+                await ApiClient.request(API_ENDPOINTS.cats.create, {
+                    method: 'POST',
+                    body: data
+                });
+                Toast.success('添加成功');
+            }
+
+            Modal.close('catModal');
+            await this.loadStatistics();
+            await this.loadCats();
+        } catch (error) {
+            Toast.error('保存失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    async deleteCat(id) {
+        if (!confirm('确定要删除这只猫咪吗？')) return;
+
+        try {
+            Loading.show();
+            await ApiClient.request(API_ENDPOINTS.cats.delete(id), {
+                method: 'DELETE'
+            });
+            Toast.success('删除成功');
+            await this.loadStatistics();
+            await this.loadCats();
+        } catch (error) {
+            Toast.error('删除失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    }
+};
+
+// Initialize page
+window.catPageHandlers.init();
+</script>

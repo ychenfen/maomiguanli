@@ -1,0 +1,1 @@
+import{s as o}from"./index-59OIMCbR.js";function i(t){return o({url:"/adoption-applications",method:"post",data:t})}function p(){return o({url:"/adoption-applications/my-applications",method:"get",params:void 0})}function n(t){return o({url:`/adoption-applications/${t}/withdraw`,method:"put"})}export{i as a,n as c,p as g};

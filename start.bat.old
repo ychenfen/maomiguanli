@@ -1,0 +1,63 @@
+@echo off
+chcp 65001 >nul
+title 校园猫咪救助系统
+
+echo ========================================
+echo     校园流浪猫档案管理与服务系统
+echo ========================================
+echo.
+
+:: 检查 Java 环境
+java -version >nul 2>&1
+if errorlevel 1 (
+    echo [错误] 未检测到 Java 环境，请先安装 JDK 17+
+    echo 下载地址: https://adoptium.net/
+    pause
+    exit /b 1
+)
+
+:: 检查 MySQL 是否运行
+echo [信息] 正在检查 MySQL 服务...
+sc query mysql >nul 2>&1
+if errorlevel 1 (
+    echo [警告] MySQL 服务未检测到，请确保 MySQL 已安装并运行
+    echo.
+)
+
+:: 启动后端
+echo [信息] 正在启动后端服务...
+cd /d "%~dp0backend"
+start /b java -jar cat-rescue.jar --spring.profiles.active=prod >nul 2>&1
+
+:: 等待后端启动
+echo [信息] 等待后端服务启动...
+timeout /t 15 /nobreak >nul
+
+:: 检查后端是否启动成功
+curl -s http://localhost:8080/api/cats/page >nul 2>&1
+if errorlevel 1 (
+    echo [警告] 后端服务可能未完全启动，请稍等...
+    timeout /t 10 /nobreak >nul
+)
+
+echo.
+echo ========================================
+echo     系统启动成功！
+echo ========================================
+echo.
+echo  前端地址: http://localhost:8080
+echo  后端API:  http://localhost:8080/api
+echo  API文档:  http://localhost:8080/doc.html
+echo.
+echo  管理员账号: admin
+echo  管理员密码: 123456
+echo.
+echo  按任意键打开浏览器...
+pause >nul
+
+start http://localhost:8080
+
+echo.
+echo  系统运行中，关闭此窗口将停止服务
+echo  按 Ctrl+C 可停止服务
+pause >nul

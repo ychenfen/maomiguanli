@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>我的云养</title>
+  <link rel="stylesheet" href="/mvp/mvp.css" />
+  <script src="/config.js"></script>
+  <script src="/mvp/mvp.js"></script>
+</head>
+<body>
+  <header>
+    <h1>我的云养</h1>
+    <nav>
+      <a href="/mvp/mvp-login.html">登录</a>
+      <a href="/mvp/cloud-adoption-list.html">云养列表</a>
+    </nav>
+  </header>
+
+  <div class="card">
+    <p class="small">需要登录 token（localStorage.user_token）。</p>
+    <button id="loadBtn">加载我的云养</button>
+  </div>
+
+  <div class="card">
+    <pre id="result"></pre>
+  </div>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    document.getElementById('loadBtn').addEventListener('click', async () => {
+      const data = await MVP.apiGet('/cloud-adoption/my-adoptions');
+      resultEl.textContent = JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>

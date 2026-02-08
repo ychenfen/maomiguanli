@@ -1,0 +1,197 @@
+<!-- Cat Tags Management Page -->
+<div class="page-container">
+    <div class="card">
+        <div class="card-header">
+            <h3>猫咪标签管理</h3>
+            <button class="btn btn-success" onclick="window.catTagsPageHandlers.showCreateModal()">+ 添加标签</button>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>标签名称</th>
+                            <th>使用次数</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="catTagsTableBody">
+                        <tr><td colspan="5" class="text-center">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-container" id="paginationContainer"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="tagModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 id="modalTitle">添加标签</h3>
+            <button class="modal-close" onclick="Modal.close('tagModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="tagId">
+            <div class="form-group">
+                <label>标签名称 *</label>
+                <input type="text" id="tagName" class="form-control" required>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close('tagModal')">取消</button>
+            <button class="btn btn-primary" onclick="window.catTagsPageHandlers.saveTag()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.catTagsPageState = window.catTagsPageState || { currentPage: 1, pageSize: 10 };
+
+window.catTagsPageHandlers = {
+    async init() {
+        await this.loadTags();
+    },
+
+    async loadTags() {
+        try {
+            Loading.show();
+            const params = {
+                page: window.catTagsPageState.currentPage,
+                size: window.catTagsPageState.pageSize
+            };
+
+            const response = await ApiClient.request(API_ENDPOINTS.catTags.list, {
+                method: 'GET',
+                params
+            });
+
+            this.renderTable(response.records || []);
+            this.renderPagination(response.total || 0);
+        } catch (error) {
+            Toast.error('加载标签列表失败: ' + error.message);
+            document.getElementById('catTagsTableBody').innerHTML = `
+                <tr><td colspan="5" class="text-center text-danger">加载失败: ${error.message}</td></tr>
+            `;
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    renderTable(tags) {
+        const tbody = document.getElementById('catTagsTableBody');
+        if (tags.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = tags.map(tag => `
+            <tr>
+                <td>${tag.id}</td>
+                <td><span class="badge badge-info">${tag.name}</span></td>
+                <td>${tag.useCount || 0}</td>
+                <td>${Utils.formatDate(tag.createTime)}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="window.catTagsPageHandlers.showEditModal(${tag.id})">编辑</button>
+                    <button class="btn btn-sm btn-danger" onclick="window.catTagsPageHandlers.deleteTag(${tag.id})">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    },
+
+    renderPagination(total) {
+        const totalPages = Math.ceil(total / window.catTagsPageState.pageSize);
+        const container = document.getElementById('paginationContainer');
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = PaginationComponent.render(
+            window.catTagsPageState.currentPage,
+            totalPages,
+            total,
+            (page) => {
+                window.catTagsPageState.currentPage = page;
+                this.loadTags();
+            }
+        );
+    },
+
+    showCreateModal() {
+        document.getElementById('modalTitle').textContent = '添加标签';
+        document.getElementById('tagId').value = '';
+        document.getElementById('tagName').value = '';
+        Modal.open('tagModal');
+    },
+
+    async showEditModal(id) {
+        try {
+            Loading.show();
+            const tag = await ApiClient.request(API_ENDPOINTS.catTags.detail(id));
+            document.getElementById('modalTitle').textContent = '编辑标签';
+            document.getElementById('tagId').value = tag.id;
+            document.getElementById('tagName').value = tag.name;
+            Modal.open('tagModal');
+        } catch (error) {
+            Toast.error('加载标签信息失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    async saveTag() {
+        const id = document.getElementById('tagId').value;
+        const name = document.getElementById('tagName').value.trim();
+
+        if (!name) {
+            Toast.warning('请输入标签名称');
+            return;
+        }
+
+        try {
+            Loading.show();
+            if (id) {
+                await ApiClient.request(API_ENDPOINTS.catTags.update(id), {
+                    method: 'PUT',
+                    body: { name }
+                });
+                Toast.success('更新成功');
+            } else {
+                await ApiClient.request(API_ENDPOINTS.catTags.create, {
+                    method: 'POST',
+                    body: { name }
+                });
+                Toast.success('添加成功');
+            }
+
+            Modal.close('tagModal');
+            await this.loadTags();
+        } catch (error) {
+            Toast.error('保存失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    async deleteTag(id) {
+        if (!confirm('确定要删除这个标签吗？')) return;
+
+        try {
+            Loading.show();
+            await ApiClient.request(API_ENDPOINTS.catTags.delete(id), {
+                method: 'DELETE'
+            });
+            Toast.success('删除成功');
+            await this.loadTags();
+        } catch (error) {
+            Toast.error('删除失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    }
+};
+
+window.catTagsPageHandlers.init();
+</script>

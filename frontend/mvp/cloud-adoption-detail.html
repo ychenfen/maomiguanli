@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>云养详情</title>
+  <link rel="stylesheet" href="/mvp/mvp.css" />
+  <script src="/config.js"></script>
+  <script src="/mvp/mvp.js"></script>
+</head>
+<body>
+  <header>
+    <h1>云养详情</h1>
+    <nav>
+      <a href="/mvp/cloud-adoption-list.html">云养列表</a>
+      <a href="/mvp/cloud-adoption-order.html">发起云养</a>
+    </nav>
+  </header>
+
+  <div class="card">
+    <label>云养 ID</label>
+    <input id="adoptionId" placeholder="例如 1" />
+    <button id="loadBtn">加载详情</button>
+  </div>
+
+  <div class="card">
+    <pre id="result"></pre>
+  </div>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    const idInput = document.getElementById('adoptionId');
+    const idFromQuery = MVP.qs('id');
+    if (idFromQuery) idInput.value = idFromQuery;
+
+    document.getElementById('loadBtn').addEventListener('click', async () => {
+      const id = idInput.value.trim();
+      if (!id) return;
+      const data = await MVP.apiGet(`/cloud-adoption/${id}`);
+      resultEl.textContent = JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>API诊断工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #409EFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #66b1ff;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .api-test {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 3px solid #409EFF;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 API诊断工具</h1>
+
+    <div class="section">
+        <h2>1. 认证状态检查</h2>
+        <button onclick="checkAuth()">检查认证状态</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. 登录测试</h2>
+        <button onclick="testLogin()">测试登录</button>
+        <div id="login-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. API测试（需要先登录）</h2>
+        <button onclick="testAllAPIs()">测试所有API</button>
+        <div id="api-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. 网络请求监控</h2>
+        <p>打开浏览器开发者工具（F12）→ Network标签，然后：</p>
+        <button onclick="window.location.href='http://localhost:5000'">访问首页</button>
+        <button onclick="window.location.href='http://localhost:5000/admin'">访问管理后台</button>
+        <p class="warning">⚠️ 查看Network标签中红色的401请求，记录下URL和Request Headers</p>
+    </div>
+
+    <script>
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : '';
+            element.innerHTML += `<div class="${className}">${message}</div>`;
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        async function checkAuth() {
+            const result = document.getElementById('auth-result');
+            result.innerHTML = '<h3>检查中...</h3>';
+
+            // 检查Cookie
+            const token = getCookie('cat_rescue_token');
+            if (token) {
+                log('auth-result', `✓ Token存在: ${token.substring(0, 50)}...`, 'success');
+            } else {
+                log('auth-result', '✗ Token不存在', 'error');
+            }
+
+            // 检查localStorage
+            const userInfo = localStorage.getItem('cat_rescue_user');
+            if (userInfo) {
+                const user = JSON.parse(userInfo);
+                log('auth-result', `✓ 用户信息: ${user.username} (${user.role})`, 'success');
+            } else {
+                log('auth-result', '✗ 用户信息不存在', 'error');
+            }
+
+            // 检查Cookie详情
+            log('auth-result', '<h4>所有Cookie:</h4>');
+            const cookies = document.cookie.split(';');
+            cookies.forEach(cookie => {
+                log('auth-result', `  ${cookie.trim()}`);
+            });
+        }
+
+        async function testLogin() {
+            const result = document.getElementById('login-result');
+            result.innerHTML = '<h3>登录测试中...</h3>';
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', 'admin');
+                formData.append('password', '123456');
+
+                const response = await fetch('/api/users/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formData.toString()
+                });
+
+                const data = await response.json();
+
+                if (data.code === 200) {
+                    log('login-result', '✓ 登录成功', 'success');
+                    log('login-result', `Token: ${data.data.token.substring(0, 50)}...`);
+
+                    // 保存token
+                    document.cookie = `cat_rescue_token=${data.data.token}; path=/; max-age=604800`;
+                    localStorage.setItem('cat_rescue_user', JSON.stringify(data.data.user));
+
+                    log('login-result', '✓ Token已保存', 'success');
+                } else {
+                    log('login-result', `✗ 登录失败: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                log('login-result', `✗ 错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAPI(name, url, method = 'GET') {
+            const token = getCookie('cat_rescue_token');
+
+            try {
+                const options = {
+                    method: method,
+                    headers: {}
+                };
+
+                if (token) {
+                    options.headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(url, options);
+                const data = await response.json();
+
+                const status = response.status;
+                const statusText = status === 200 ? '✓' : '✗';
+                const statusClass = status === 200 ? 'success' : 'error';
+
+                return {
+                    name,
+                    url,
+                    status,
+                    statusText,
+                    statusClass,
+                    hasToken: !!token,
+                    data: data
+                };
+            } catch (error) {
+                return {
+                    name,
+                    url,
+                    status: 'ERROR',
+                    statusText: '✗',
+                    statusClass: 'error',
+                    hasToken: !!token,
+                    error: error.message
+                };
+            }
+        }
+
+        async function testAllAPIs() {
+            const result = document.getElementById('api-result');
+            result.innerHTML = '<h3>测试中...</h3>';
+
+            const token = getCookie('cat_rescue_token');
+            if (!token) {
+                log('api-result', '⚠️ 未找到Token，请先登录', 'warning');
+                return;
+            }
+
+            log('api-result', `使用Token: ${token.substring(0, 50)}...`);
+            log('api-result', '<br>');
+
+            const apis = [
+                { name: '猫咪列表', url: '/api/cats/page?current=1&size=10' },
+                { name: '社区动态', url: '/api/dynamics/page?current=1&size=10' },
+                { name: '热门话题', url: '/api/community/hot-topics?limit=5' },
+                { name: '活跃用户', url: '/api/community/active-users?limit=5' },
+                { name: '用户信息', url: '/api/users/info' },
+                { name: '用户统计', url: '/api/users/stats' },
+                { name: '猫咪统计', url: '/api/cats/stats' },
+                { name: '领养列表', url: '/api/adoptions/page?current=1&size=10' },
+                { name: '救助信息', url: '/api/rescue-info/page?current=1&size=10' }
+            ];
+
+            for (const api of apis) {
+                const testResult = await testAPI(api.name, api.url);
+
+                log('api-result',
+                    `<div class="api-test">
+                        <strong>${testResult.statusText} ${testResult.name}</strong><br>
+                        URL: ${testResult.url}<br>
+                        状态: <span class="${testResult.statusClass}">${testResult.status}</span><br>
+                        携带Token: ${testResult.hasToken ? '是' : '否'}<br>
+                        ${testResult.error ? `错误: ${testResult.error}` : `响应: ${JSON.stringify(testResult.data).substring(0, 100)}...`}
+                    </div>`
+                );
+            }
+        }
+    </script>
+</body>
+</html>

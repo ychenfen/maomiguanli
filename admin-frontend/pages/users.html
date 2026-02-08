@@ -1,0 +1,471 @@
+<div class="page-header">
+    <h1 class="page-title">用户管理</h1>
+    <p class="page-description">管理系统用户信息和权限</p>
+</div>
+
+<!-- Statistics Cards -->
+<div id="userStats"></div>
+
+<!-- Filters -->
+<div class="card mb-lg">
+    <div class="card-body">
+        <div id="userFilters"></div>
+    </div>
+</div>
+
+<!-- User List -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">用户列表</h3>
+        <button class="btn btn-primary" onclick="showCreateUserModal()">
+            <span>+ 添加用户</span>
+        </button>
+    </div>
+    <div class="card-body">
+        <div id="userTable"></div>
+        <div id="userPagination"></div>
+    </div>
+</div>
+
+<script>
+// State - 使用window对象避免重复声明错误
+window.userPageState = window.userPageState || {
+    currentPage: 1,
+    pageSize: 10,
+    filters: {}
+};
+
+// Load user statistics
+async function loadUserStatistics() {
+    try {
+        const result = await ApiClient.get(API.users.statistics);
+        if (result.code === 200 && result.data) {
+            const stats = [
+                {
+                    title: '总用户数',
+                    value: result.data.totalUsers || 0,
+                    label: `今日新增: ${result.data.todayNewUsers || 0}`,
+                    color: 'blue'
+                },
+                {
+                    title: '活跃用户',
+                    value: result.data.activeUsers || 0,
+                    label: `本月活跃: ${result.data.monthActiveUsers || 0}`,
+                    color: 'green'
+                },
+                {
+                    title: '管理员',
+                    value: result.data.adminUsers || 0,
+                    label: `超级管理员: ${result.data.superAdminUsers || 0}`,
+                    color: 'orange'
+                },
+                {
+                    title: '已认证用户',
+                    value: result.data.verifiedUsers || 0,
+                    label: `认证率: ${result.data.verificationRate || 0}%`,
+                    color: 'info'
+                }
+            ];
+            StatsCardComponent.render(document.getElementById('userStats'), stats);
+        }
+    } catch (error) {
+        console.error('Load user statistics error:', error);
+    }
+}
+
+// Render filters
+function renderFilters() {
+    FilterComponent.render(document.getElementById('userFilters'), {
+        filters: [
+            {
+                type: 'search',
+                name: 'keyword',
+                placeholder: '搜索用户名、姓名、邮箱...'
+            },
+            {
+                type: 'select',
+                name: 'role',
+                placeholder: '用户角色',
+                options: [
+                    { value: 'USER', label: '普通用户' },
+                    { value: 'ADMIN', label: '管理员' },
+                    { value: 'SUPER_ADMIN', label: '超级管理员' }
+                ]
+            },
+            {
+                type: 'select',
+                name: 'status',
+                placeholder: '用户状态',
+                options: [
+                    { value: 'ACTIVE', label: '正常' },
+                    { value: 'DISABLED', label: '禁用' }
+                ]
+            }
+        ],
+        onFilter: (filterData) => {
+            window.userPageState.filters = filterData;
+            window.userPageState.currentPage = 1;
+            loadUsers();
+        }
+    });
+}
+
+// Load users
+async function loadUsers() {
+    try {
+        Loading.show();
+        const params = {
+            page: window.userPageState.currentPage,
+            size: window.userPageState.pageSize,
+            ...window.userPageState.filters
+        };
+
+        const result = await ApiClient.get(API.users.list, params);
+
+        if (result.code === 200 && result.data) {
+            renderUserTable(result.data.records || result.data.list || []);
+            renderPagination(result.data.total || 0);
+        } else {
+            Toast.error('加载失败', result.message || '无法加载用户列表');
+        }
+    } catch (error) {
+        console.error('Load users error:', error);
+        Toast.error('加载失败', '网络错误');
+    } finally {
+        Loading.hide();
+    }
+}
+
+// Render user table
+function renderUserTable(users) {
+    TableComponent.render(document.getElementById('userTable'), {
+        columns: [
+            { label: 'ID', field: 'id' },
+            { label: '用户名', field: 'username' },
+            { label: '真实姓名', field: 'realName' },
+            { label: '邮箱', field: 'email' },
+            {
+                label: '角色',
+                field: 'role',
+                formatter: (value) => {
+                    const roleMap = {
+                        'USER': '<span class="badge badge-info">普通用户</span>',
+                        'ADMIN': '<span class="badge badge-warning">管理员</span>',
+                        'SUPER_ADMIN': '<span class="badge badge-danger">超级管理员</span>'
+                    };
+                    return roleMap[value] || value;
+                }
+            },
+            {
+                label: '状态',
+                field: 'status',
+                formatter: (value) => {
+                    const statusMap = {
+                        'ACTIVE': '<span class="badge badge-success">正常</span>',
+                        'DISABLED': '<span class="badge badge-danger">禁用</span>'
+                    };
+                    return statusMap[value] || value;
+                }
+            },
+            {
+                label: '创建时间',
+                field: 'createTime',
+                formatter: (value) => Utils.formatDate(value, 'YYYY-MM-DD')
+            }
+        ],
+        data: users,
+        actions: [
+            {
+                name: 'view',
+                label: '查看',
+                type: 'btn-info',
+                handler: (id) => viewUser(id)
+            },
+            {
+                name: 'edit',
+                label: '编辑',
+                type: 'btn-primary',
+                handler: (id) => editUser(id)
+            },
+            {
+                name: 'changeStatus',
+                label: '禁用/启用',
+                type: 'btn-warning',
+                handler: (id) => changeUserStatus(id)
+            },
+            {
+                name: 'changeRole',
+                label: '修改角色',
+                type: 'btn-warning',
+                show: () => Auth.hasPermission('CHANGE_USER_ROLE'),
+                handler: (id) => changeUserRole(id)
+            },
+            {
+                name: 'delete',
+                label: '删除',
+                type: 'btn-danger',
+                handler: (id) => deleteUser(id)
+            }
+        ],
+        emptyText: '暂无用户数据'
+    });
+}
+
+// Render pagination
+function renderPagination(total) {
+    PaginationComponent.render(document.getElementById('userPagination'), {
+        current: window.userPageState.currentPage,
+        total: total,
+        pageSize: window.userPageState.pageSize,
+        onChange: (page) => {
+            window.userPageState.currentPage = page;
+            loadUsers();
+        }
+    });
+}
+
+// View user details
+async function viewUser(id) {
+    try {
+        Loading.show();
+        const result = await ApiClient.get(API.users.detail(id));
+
+        if (result.code === 200 && result.data) {
+            const user = result.data;
+            Modal.show({
+                title: '用户详情',
+                content: `
+                    <div style="display: grid; grid-template-columns: 120px 1fr; gap: 12px; font-size: 14px;">
+                        <div style="color: var(--text-secondary);">用户ID:</div>
+                        <div>${user.id}</div>
+
+                        <div style="color: var(--text-secondary);">用户名:</div>
+                        <div>${user.username}</div>
+
+                        <div style="color: var(--text-secondary);">真实姓名:</div>
+                        <div>${user.realName || '-'}</div>
+
+                        <div style="color: var(--text-secondary);">邮箱:</div>
+                        <div>${user.email || '-'}</div>
+
+                        <div style="color: var(--text-secondary);">手机号:</div>
+                        <div>${user.phone || '-'}</div>
+
+                        <div style="color: var(--text-secondary);">角色:</div>
+                        <div>${user.role}</div>
+
+                        <div style="color: var(--text-secondary);">状态:</div>
+                        <div>${user.status}</div>
+
+                        <div style="color: var(--text-secondary);">创建时间:</div>
+                        <div>${Utils.formatDate(user.createTime)}</div>
+
+                        <div style="color: var(--text-secondary);">最后登录:</div>
+                        <div>${Utils.formatDate(user.lastLoginTime)}</div>
+                    </div>
+                `,
+                showCancel: false,
+                confirmText: '关闭'
+            });
+        }
+    } catch (error) {
+        console.error('View user error:', error);
+        Toast.error('加载失败', '无法加载用户详情');
+    } finally {
+        Loading.hide();
+    }
+}
+
+// Edit user
+async function editUser(id) {
+    try {
+        Loading.show();
+        const result = await ApiClient.get(API.users.detail(id));
+
+        if (result.code === 200 && result.data) {
+            const user = result.data;
+            showUserFormModal('编辑用户', user, async (formData) => {
+                try {
+                    const updateResult = await ApiClient.put(API.users.update(id), formData);
+                    if (updateResult.code === 200) {
+                        Toast.success('更新成功', '用户信息已更新');
+                        loadUsers();
+                    } else {
+                        Toast.error('更新失败', updateResult.message);
+                    }
+                } catch (error) {
+                    console.error('Update user error:', error);
+                    Toast.error('更新失败', '网络错误');
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Load user error:', error);
+        Toast.error('加载失败', '无法加载用户信息');
+    } finally {
+        Loading.hide();
+    }
+}
+
+// Show create user modal
+function showCreateUserModal() {
+    showUserFormModal('添加用户', {}, async (formData) => {
+        try {
+            const result = await ApiClient.post(API.users.create, formData);
+            if (result.code === 200) {
+                Toast.success('创建成功', '用户已创建');
+                loadUsers();
+            } else {
+                Toast.error('创建失败', result.message);
+            }
+        } catch (error) {
+            console.error('Create user error:', error);
+            Toast.error('创建失败', '网络错误');
+        }
+    });
+}
+
+// Show user form modal
+function showUserFormModal(title, userData, onSubmit) {
+    const modalContent = document.createElement('div');
+    const form = FormComponent.render(modalContent, {
+        fields: [
+            {
+                type: 'text',
+                name: 'username',
+                label: '用户名',
+                required: true,
+                placeholder: '请输入用户名',
+                disabled: !!userData.id
+            },
+            {
+                type: 'password',
+                name: 'password',
+                label: '密码',
+                required: !userData.id,
+                placeholder: userData.id ? '留空则不修改' : '请输入密码'
+            },
+            {
+                type: 'text',
+                name: 'realName',
+                label: '真实姓名',
+                placeholder: '请输入真实姓名'
+            },
+            {
+                type: 'email',
+                name: 'email',
+                label: '邮箱',
+                placeholder: '请输入邮箱'
+            },
+            {
+                type: 'text',
+                name: 'phone',
+                label: '手机号',
+                placeholder: '请输入手机号'
+            }
+        ],
+        data: userData
+    });
+
+    Modal.show({
+        title: title,
+        content: modalContent.innerHTML,
+        onConfirm: () => {
+            if (form.validate()) {
+                const formData = form.getData();
+                if (!formData.password) {
+                    delete formData.password;
+                }
+                onSubmit(formData);
+            } else {
+                Toast.warning('验证失败', '请填写必填项');
+                return false;
+            }
+        }
+    });
+}
+
+// Change user status
+async function changeUserStatus(id) {
+    Modal.confirm(
+        '确认操作',
+        '确定要更改用户状态吗？',
+        async () => {
+            try {
+                const result = await ApiClient.put(API.users.changeStatus(id));
+                if (result.code === 200) {
+                    Toast.success('操作成功', '用户状态已更改');
+                    loadUsers();
+                } else {
+                    Toast.error('操作失败', result.message);
+                }
+            } catch (error) {
+                console.error('Change status error:', error);
+                Toast.error('操作失败', '网络错误');
+            }
+        }
+    );
+}
+
+// Change user role
+async function changeUserRole(id) {
+    // Show role selection modal
+    const modalContent = `
+        <div class="form-group">
+            <label class="form-label">选择角色</label>
+            <select class="form-select" id="roleSelect">
+                <option value="USER">普通用户</option>
+                <option value="ADMIN">管理员</option>
+                <option value="SUPER_ADMIN">超级管理员</option>
+            </select>
+        </div>
+    `;
+
+    Modal.show({
+        title: '修改用户角色',
+        content: modalContent,
+        onConfirm: async () => {
+            const role = document.getElementById('roleSelect').value;
+            try {
+                const result = await ApiClient.put(API.users.changeRole(id), { role });
+                if (result.code === 200) {
+                    Toast.success('操作成功', '用户角色已更改');
+                    loadUsers();
+                } else {
+                    Toast.error('操作失败', result.message);
+                }
+            } catch (error) {
+                console.error('Change role error:', error);
+                Toast.error('操作失败', '网络错误');
+            }
+        }
+    });
+}
+
+// Delete user
+async function deleteUser(id) {
+    Modal.confirm(
+        '确认删除',
+        '确定要删除该用户吗？此操作不可恢复。',
+        async () => {
+            try {
+                const result = await ApiClient.delete(API.users.delete(id));
+                if (result.code === 200) {
+                    Toast.success('删除成功', '用户已删除');
+                    loadUsers();
+                } else {
+                    Toast.error('删除失败', result.message);
+                }
+            } catch (error) {
+                console.error('Delete user error:', error);
+                Toast.error('删除失败', '网络错误');
+            }
+        }
+    );
+}
+
+// Initialize
+loadUserStatistics();
+renderFilters();
+loadUsers();
+</script>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>捐献项目详情</title>
+  <link rel="stylesheet" href="/mvp/mvp.css" />
+  <script src="/config.js"></script>
+  <script src="/mvp/mvp.js"></script>
+</head>
+<body>
+  <header>
+    <h1>捐献项目详情</h1>
+    <nav>
+      <a href="/mvp/donation-projects.html">项目列表</a>
+      <a href="/mvp/donation-new.html">发起捐献</a>
+    </nav>
+  </header>
+
+  <div class="card">
+    <label>crowdfundingId</label>
+    <input id="projectId" placeholder="例如 1" />
+    <button id="loadBtn">加载详情</button>
+  </div>
+
+  <div class="card">
+    <pre id="result"></pre>
+  </div>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    const idInput = document.getElementById('projectId');
+    const idFromQuery = MVP.qs('id');
+    if (idFromQuery) idInput.value = idFromQuery;
+
+    document.getElementById('loadBtn').addEventListener('click', async () => {
+      const id = idInput.value.trim();
+      if (!id) return;
+      const data = await MVP.apiGet(`/crowdfunding/${id}`);
+      resultEl.textContent = JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>

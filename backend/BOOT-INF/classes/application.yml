@@ -1,0 +1,151 @@
+spring:
+  application:
+    name: cat-rescue
+
+  # 禁用 DevTools 自动重启
+  devtools:
+    restart:
+      enabled: false
+    livereload:
+      enabled: false
+
+  # 数据源配置
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/cat_rescue?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password:
+    druid:
+      # 初始连接数
+      initial-size: 5
+      # 最小连接池数量
+      min-idle: 10
+      # 最大连接池数量
+      max-active: 20
+      # 配置获取连接等待超时的时间
+      max-wait: 60000
+      # 配置间隔多久才进行一次检测,检测需要关闭的空闲连接,单位是毫秒
+      time-between-eviction-runs-millis: 60000
+      # 配置一个连接在池中最小生存的时间,单位是毫秒
+      min-evictable-idle-time-millis: 300000
+      # 配置一个连接在池中最大生存的时间,单位是毫秒
+      max-evictable-idle-time-millis: 900000
+      # 配置检测连接是否有效
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      # 监控统计（暂时禁用以解决Spring Security兼容问题）
+      web-stat-filter:
+        enabled: false
+      stat-view-servlet:
+        enabled: false
+        url-pattern: /druid/*
+        login-username: admin
+        login-password: admin
+      filter:
+        stat:
+          enabled: true
+          log-slow-sql: true
+          slow-sql-millis: 1000
+          merge-sql: true
+        wall:
+          config:
+            multi-statement-allow: true
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1
+          max-idle: 8
+          min-idle: 0
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+  # Jackson 配置
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  # Mapper XML 文件位置
+  mapper-locations: classpath*:/mapper/**/*.xml
+  # 实体扫描，多个package用逗号或者分号分隔
+  type-aliases-package: com.campus.cat.module.*.entity
+  configuration:
+    # 开启驼峰命名
+    map-underscore-to-camel-case: true
+    # 日志
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      # 主键类型（AUTO 自增、INPUT 用户输入、ASSIGN_ID 雪花算法）
+      id-type: AUTO
+      # 逻辑删除字段
+      logic-delete-field: isDeleted
+      # 逻辑删除值
+      logic-delete-value: 1
+      # 逻辑未删除值
+      logic-not-delete-value: 0
+
+# JWT 配置
+jwt:
+  # 密钥
+  secret: cat-rescue-platform-secret-key-2024-very-long-and-secure
+  # Token 有效期（单位：秒，7天）
+  expiration: 604800
+  # Token 前缀
+  token-prefix: Bearer
+  # Token Header 名称
+  header: Authorization
+
+# 文件上传配置
+file:
+  # 上传路径（本地存储）
+  upload-path: /Users/yuchenxu/Desktop/猫咪领养系统/uploads/
+  # 访问路径前缀
+  access-path: /uploads/**
+  # 最大文件大小（MB）
+  max-size: 10
+
+# Knife4j 配置
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+# 服务器配置
+server:
+  port: 8080
+  tomcat:
+    uri-encoding: UTF-8
+
+# 日志配置
+logging:
+  level:
+    com.campus.cat: debug
+    com.campus.cat.module.*.mapper: debug
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n'
+    file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n'
+  file:
+    name: logs/cat-rescue.log
+    max-size: 10MB
+    max-history: 30

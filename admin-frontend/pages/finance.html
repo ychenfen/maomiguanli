@@ -1,0 +1,177 @@
+<!-- Finance Management Page -->
+<div class="page-container">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">💰</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="totalTransactions">0</div>
+                <div class="stat-card-label">总交易数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">📈</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="totalIncome">¥0</div>
+                <div class="stat-card-label">总收入</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">📉</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="totalExpense">¥0</div>
+                <div class="stat-card-label">总支出</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">💵</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="balance">¥0</div>
+                <div class="stat-card-label">余额</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索交易描述...">
+                    <select id="typeFilter" class="form-control">
+                        <option value="">全部类型</option>
+                        <option value="INCOME">收入</option>
+                        <option value="EXPENSE">支出</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="window.financePageHandlers.search()">搜索</button>
+                    <button class="btn btn-secondary" onclick="window.financePageHandlers.reset()">重置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>类型</th>
+                            <th>金额</th>
+                            <th>描述</th>
+                            <th>交易时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="financeTableBody">
+                        <tr><td colspan="5" class="text-center">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-container" id="paginationContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+window.financePageState = window.financePageState || { currentPage: 1, pageSize: 10, filters: {} };
+
+window.financePageHandlers = {
+    async init() {
+        await this.loadStatistics();
+        await this.loadTransactions();
+    },
+
+    async loadStatistics() {
+        try {
+            const stats = await ApiClient.request(API_ENDPOINTS.finance.statistics);
+            document.getElementById('totalTransactions').textContent = stats.total || 0;
+            document.getElementById('totalIncome').textContent = Utils.formatCurrency(stats.income || 0);
+            document.getElementById('totalExpense').textContent = Utils.formatCurrency(stats.expense || 0);
+            document.getElementById('balance').textContent = Utils.formatCurrency((stats.income || 0) - (stats.expense || 0));
+        } catch (error) {
+            console.error('Load statistics error:', error);
+        }
+    },
+
+    async loadTransactions() {
+        try {
+            Loading.show();
+            const params = {
+                page: window.financePageState.currentPage,
+                size: window.financePageState.pageSize,
+                ...window.financePageState.filters
+            };
+
+            const response = await ApiClient.request(API_ENDPOINTS.finance.list, {
+                method: 'GET',
+                params
+            });
+
+            this.renderTable(response.records || []);
+            this.renderPagination(response.total || 0);
+        } catch (error) {
+            Toast.error('加载交易列表失败: ' + error.message);
+            document.getElementById('financeTableBody').innerHTML = `
+                <tr><td colspan="5" class="text-center text-danger">加载失败: ${error.message}</td></tr>
+            `;
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    renderTable(transactions) {
+        const tbody = document.getElementById('financeTableBody');
+        if (transactions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = transactions.map(t => `
+            <tr>
+                <td>${t.id}</td>
+                <td><span class="badge badge-${t.type === 'INCOME' ? 'success' : 'danger'}">${t.type === 'INCOME' ? '收入' : '支出'}</span></td>
+                <td style="color: ${t.type === 'INCOME' ? '#67C23A' : '#F56C6C'}; font-weight: bold;">${t.type === 'INCOME' ? '+' : '-'}${Utils.formatCurrency(t.amount || 0)}</td>
+                <td>${t.description || '-'}</td>
+                <td>${Utils.formatDate(t.createTime)}</td>
+            </tr>
+        `).join('');
+    },
+
+    renderPagination(total) {
+        const totalPages = Math.ceil(total / window.financePageState.pageSize);
+        const container = document.getElementById('paginationContainer');
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = PaginationComponent.render(
+            window.financePageState.currentPage,
+            totalPages,
+            total,
+            (page) => {
+                window.financePageState.currentPage = page;
+                this.loadTransactions();
+            }
+        );
+    },
+
+    search() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        const type = document.getElementById('typeFilter').value;
+        window.financePageState.filters = {};
+        if (keyword) window.financePageState.filters.keyword = keyword;
+        if (type) window.financePageState.filters.type = type;
+        window.financePageState.currentPage = 1;
+        this.loadTransactions();
+    },
+
+    reset() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('typeFilter').value = '';
+        window.financePageState.filters = {};
+        window.financePageState.currentPage = 1;
+        this.loadTransactions();
+    }
+};
+
+window.financePageHandlers.init();
+</script>

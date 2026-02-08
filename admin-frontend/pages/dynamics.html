@@ -1,0 +1,230 @@
+<!-- Dynamics Management Page -->
+<div class="page-container">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">💬</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="totalDynamics">0</div>
+                <div class="stat-card-label">总动态数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">👍</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="totalLikes">0</div>
+                <div class="stat-card-label">总点赞数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">💬</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="totalComments">0</div>
+                <div class="stat-card-label">总评论数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">📅</div>
+            <div class="stat-card-content">
+                <div class="stat-card-value" id="todayDynamics">0</div>
+                <div class="stat-card-label">今日新增</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索动态内容、发布者...">
+                    <button class="btn btn-primary" onclick="window.dynamicsPageHandlers.search()">搜索</button>
+                    <button class="btn btn-secondary" onclick="window.dynamicsPageHandlers.reset()">重置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>发布者</th>
+                            <th>内容</th>
+                            <th>点赞数</th>
+                            <th>评论数</th>
+                            <th>发布时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dynamicsTableBody">
+                        <tr><td colspan="7" class="text-center">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-container" id="paginationContainer"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="detailModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+            <h3>动态详情</h3>
+            <button class="modal-close" onclick="Modal.close('detailModal')">&times;</button>
+        </div>
+        <div class="modal-body" id="detailContent"></div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="Modal.close('detailModal')">关闭</button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.dynamicsPageState = window.dynamicsPageState || { currentPage: 1, pageSize: 10, filters: {} };
+
+window.dynamicsPageHandlers = {
+    async init() {
+        await this.loadStatistics();
+        await this.loadDynamics();
+    },
+
+    async loadStatistics() {
+        try {
+            const stats = await ApiClient.request(API_ENDPOINTS.dynamics.statistics);
+            document.getElementById('totalDynamics').textContent = stats.total || 0;
+            document.getElementById('totalLikes').textContent = stats.likes || 0;
+            document.getElementById('totalComments').textContent = stats.comments || 0;
+            document.getElementById('todayDynamics').textContent = stats.today || 0;
+        } catch (error) {
+            console.error('Load statistics error:', error);
+        }
+    },
+
+    async loadDynamics() {
+        try {
+            Loading.show();
+            const params = {
+                page: window.dynamicsPageState.currentPage,
+                size: window.dynamicsPageState.pageSize,
+                ...window.dynamicsPageState.filters
+            };
+
+            const response = await ApiClient.request(API_ENDPOINTS.dynamics.list, {
+                method: 'GET',
+                params
+            });
+
+            this.renderTable(response.records || []);
+            this.renderPagination(response.total || 0);
+        } catch (error) {
+            Toast.error('加载动态列表失败: ' + error.message);
+            document.getElementById('dynamicsTableBody').innerHTML = `
+                <tr><td colspan="7" class="text-center text-danger">加载失败: ${error.message}</td></tr>
+            `;
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    renderTable(dynamics) {
+        const tbody = document.getElementById('dynamicsTableBody');
+        if (dynamics.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = dynamics.map(d => `
+            <tr>
+                <td>${d.id}</td>
+                <td>${d.authorName || '-'}</td>
+                <td>${d.content ? (d.content.length > 50 ? d.content.substring(0, 50) + '...' : d.content) : '-'}</td>
+                <td>${d.likeCount || 0}</td>
+                <td>${d.commentCount || 0}</td>
+                <td>${Utils.formatDate(d.createTime)}</td>
+                <td>
+                    <button class="btn btn-sm btn-info" onclick="window.dynamicsPageHandlers.showDetail(${d.id})">详情</button>
+                    <button class="btn btn-sm btn-danger" onclick="window.dynamicsPageHandlers.deleteDynamic(${d.id})">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    },
+
+    renderPagination(total) {
+        const totalPages = Math.ceil(total / window.dynamicsPageState.pageSize);
+        const container = document.getElementById('paginationContainer');
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = PaginationComponent.render(
+            window.dynamicsPageState.currentPage,
+            totalPages,
+            total,
+            (page) => {
+                window.dynamicsPageState.currentPage = page;
+                this.loadDynamics();
+            }
+        );
+    },
+
+    search() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        window.dynamicsPageState.filters = {};
+        if (keyword) window.dynamicsPageState.filters.keyword = keyword;
+        window.dynamicsPageState.currentPage = 1;
+        this.loadDynamics();
+    },
+
+    reset() {
+        document.getElementById('searchInput').value = '';
+        window.dynamicsPageState.filters = {};
+        window.dynamicsPageState.currentPage = 1;
+        this.loadDynamics();
+    },
+
+    async showDetail(id) {
+        try {
+            Loading.show();
+            const d = await ApiClient.request(API_ENDPOINTS.dynamics.detail(id));
+            document.getElementById('detailContent').innerHTML = `
+                <div class="detail-section">
+                    <h4>动态信息</h4>
+                    <div class="detail-row"><span class="detail-label">发布者:</span><span class="detail-value">${d.authorName || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">内容:</span><span class="detail-value">${d.content || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">点赞数:</span><span class="detail-value">${d.likeCount || 0}</span></div>
+                    <div class="detail-row"><span class="detail-label">评论数:</span><span class="detail-value">${d.commentCount || 0}</span></div>
+                    <div class="detail-row"><span class="detail-label">发布时间:</span><span class="detail-value">${Utils.formatDate(d.createTime)}</span></div>
+                    ${d.images && d.images.length > 0 ? `<div class="detail-row"><span class="detail-label">图片:</span><div>${d.images.map(img => `<img src="${img}" style="max-width: 200px; margin: 5px;">`).join('')}</div></div>` : ''}
+                </div>
+            `;
+            Modal.open('detailModal');
+        } catch (error) {
+            Toast.error('加载详情失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
+    async deleteDynamic(id) {
+        if (!confirm('确定要删除这条动态吗？')) return;
+
+        try {
+            Loading.show();
+            await ApiClient.request(API_ENDPOINTS.dynamics.delete(id), {
+                method: 'DELETE'
+            });
+            Toast.success('删除成功');
+            await this.loadStatistics();
+            await this.loadDynamics();
+        } catch (error) {
+            Toast.error('删除失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    }
+};
+
+window.dynamicsPageHandlers.init();
+</script>
