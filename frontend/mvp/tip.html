@@ -3,48 +3,168 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>打赏（复用捐献）</title>
+  <title>打赏猫咪 - 校园猫咪救助</title>
   <link rel="stylesheet" href="/mvp/mvp.css" />
   <script src="/config.js"></script>
   <script src="/mvp/mvp.js"></script>
 </head>
 <body>
-  <header>
-    <h1>打赏（复用 donation）</h1>
-    <nav>
-      <a href="/mvp/mvp-login.html">登录</a>
-      <a href="/mvp/donation-new.html">捐献</a>
-    </nav>
-  </header>
+  <div id="nav"></div>
+  <div class="container" style="max-width:580px;">
+    <div class="page-header">
+      <h1>打赏猫咪</h1>
+      <p id="subtitle">选择一只猫咪，送上你的爱心打赏</p>
+    </div>
+    <div class="card" style="padding:28px;">
+      <div class="form-group">
+        <label>选择猫咪 <span class="required">*</span></label>
+        <select id="catId">
+          <option value="">加载中...</option>
+        </select>
+        <div id="catPreview" style="margin-top:8px;"></div>
+      </div>
+      <div class="form-group">
+        <label>打赏金额 <span class="required">*</span></label>
+        <div class="amount-options">
+          <div class="opt" data-amount="1">¥1</div>
+          <div class="opt" data-amount="5">¥5</div>
+          <div class="opt selected" data-amount="10">¥10</div>
+          <div class="opt" data-amount="20">¥20</div>
+          <div class="opt" data-amount="50">¥50</div>
+          <div class="opt" data-amount="88">¥88</div>
+        </div>
+        <input id="amount" type="number" value="10" min="0.01" step="0.01" placeholder="自定义金额" />
+      </div>
+      <div class="form-group">
+        <label>留言（选填）</label>
+        <textarea id="message" placeholder="给猫咪写一句话..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>支付方式</label>
+        <select id="paymentMethod">
+          <option value="WECHAT">微信支付</option>
+          <option value="ALIPAY">支付宝</option>
+          <option value="OTHER">其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" id="isAnonymous" style="width:auto;margin-right:6px;" /> 匿名打赏</label>
+      </div>
+      <button class="btn btn-success btn-block" id="submitBtn" style="font-size:16px;padding:14px;">确认打赏</button>
+    </div>
 
-  <div class="card">
-    <p class="small">打赏记录写入 donation 表（catId + amount）。需要登录 token。</p>
-    <label>catId</label>
-    <input id="catId" placeholder="必填" />
-    <label>amount</label>
-    <input id="amount" placeholder="例如 20.00" />
-    <label>message</label>
-    <textarea id="message" placeholder="可选"></textarea>
-    <button id="submitBtn">提交打赏</button>
+    <!-- 最近打赏 -->
+    <div class="card" id="recentTips" style="display:none;">
+      <div class="card-title">最近打赏记录</div>
+      <div id="tipList"></div>
+    </div>
   </div>
-
-  <div class="card">
-    <pre id="result"></pre>
-  </div>
-
   <script>
-    const resultEl = document.getElementById('result');
-    document.getElementById('submitBtn').addEventListener('click', async () => {
-      const payload = {
-        catId: document.getElementById('catId').value || null,
-        amount: document.getElementById('amount').value || null,
-        message: document.getElementById('message').value || null,
-        isAnonymous: false,
-        paymentMethod: 'OTHER'
-      };
-      const data = await MVP.apiPost('/donation', payload);
-      resultEl.textContent = JSON.stringify(data, null, 2);
+    document.getElementById('nav').innerHTML = MVP.renderNav('tip');
+    const qCatId = MVP.qs('catId');
+    const qCatName = MVP.qs('catName');
+    let allCats = [];
+
+    if (qCatName) {
+      document.getElementById('subtitle').textContent = `为「${decodeURIComponent(qCatName)}」送上爱心打赏`;
+    }
+
+    async function loadCats() {
+      const sel = document.getElementById('catId');
+      try {
+        const res = await MVP.apiGet('/cats/page', { page: 1, size: 100 });
+        if (res.code === 200) {
+          allCats = res.data.records || [];
+          sel.innerHTML = '<option value="">请选择猫咪</option>' +
+            allCats.map(c => `<option value="${c.id}" ${String(c.id)===qCatId?'selected':''}>${c.name} (${c.breed||'未知品种'})</option>`).join('');
+          if (qCatId) {
+            updatePreview(qCatId);
+            loadRecentTips(qCatId);
+          }
+        }
+      } catch (e) { sel.innerHTML = '<option value="">加载失败</option>'; }
+    }
+
+    function updatePreview(catId) {
+      const cat = allCats.find(c => String(c.id) === String(catId));
+      const div = document.getElementById('catPreview');
+      if (cat) {
+        div.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:8px;background:#f7fafc;border-radius:8px;">
+          <img src="${MVP.catImg(cat.coverImage)}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;" onerror="this.style.display='none'" />
+          <div><strong>${cat.name}</strong><div style="font-size:12px;color:var(--text-secondary);">${cat.breed||''} · ${cat.gender===1?'公':cat.gender===2?'母':'未知'}</div></div>
+        </div>`;
+      } else { div.innerHTML = ''; }
+    }
+
+    async function loadRecentTips(catId) {
+      try {
+        const res = await MVP.apiGet(`/donation/cat/${catId}`, { limit: 5 });
+        if (res.code === 200 && res.data && res.data.length > 0) {
+          const wrap = document.getElementById('recentTips');
+          wrap.style.display = 'block';
+          document.getElementById('tipList').innerHTML = res.data.map(d => `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:14px;">
+              <span>${d.isAnonymous ? '匿名用户' : (d.username || '-')}</span>
+              <span style="color:var(--warning);font-weight:600;">¥${MVP.fmtMoney(d.amount)}</span>
+              <span style="color:var(--text-secondary);font-size:12px;">${MVP.fmtDate(d.createTime)}</span>
+            </div>
+          `).join('');
+        }
+      } catch (e) {}
+    }
+
+    document.getElementById('catId').addEventListener('change', (e) => {
+      updatePreview(e.target.value);
+      if (e.target.value) loadRecentTips(e.target.value);
     });
+
+    // Amount options
+    document.querySelectorAll('.amount-options .opt').forEach(el => {
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.amount-options .opt').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('amount').value = el.dataset.amount;
+      });
+    });
+    document.getElementById('amount').addEventListener('input', () => {
+      document.querySelectorAll('.amount-options .opt').forEach(e => e.classList.remove('selected'));
+    });
+
+    // Submit
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      if (!MVP.requireLogin()) return;
+      const catId = document.getElementById('catId').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      if (!catId) { MVP.toast('请选择猫咪', 'error'); return; }
+      if (!amount || amount < 0.01) { MVP.toast('请输入有效金额', 'error'); return; }
+
+      const payload = {
+        catId: Number(catId),
+        amount,
+        message: document.getElementById('message').value || null,
+        paymentMethod: document.getElementById('paymentMethod').value,
+        isAnonymous: document.getElementById('isAnonymous').checked
+      };
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = '提交中...';
+      try {
+        const res = await MVP.apiPost('/donation', payload);
+        if (res.code === 200) {
+          MVP.toast('打赏成功！猫咪感谢你的爱心！', 'success');
+          setTimeout(() => { window.location.href = '/mvp/donation-mine.html'; }, 1000);
+        } else {
+          MVP.toast(res.message || '打赏失败', 'error');
+          btn.disabled = false; btn.textContent = '确认打赏';
+        }
+      } catch (err) {
+        MVP.toast('网络错误: ' + err.message, 'error');
+        btn.disabled = false; btn.textContent = '确认打赏';
+      }
+    });
+
+    loadCats();
   </script>
 </body>
 </html>

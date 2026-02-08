@@ -3,41 +3,81 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>捐献项目列表</title>
+  <title>捐献项目 - 校园猫咪救助</title>
   <link rel="stylesheet" href="/mvp/mvp.css" />
   <script src="/config.js"></script>
   <script src="/mvp/mvp.js"></script>
 </head>
 <body>
-  <header>
-    <h1>捐献项目列表（众筹）</h1>
-    <nav>
-      <a href="/mvp/mvp-login.html">登录</a>
-      <a href="/mvp/donation-new.html">发起捐献</a>
-      <a href="/mvp/donation-mine.html">我的捐献</a>
-    </nav>
-  </header>
-
-  <div class="card">
-    <label>pageNum</label>
-    <input id="pageNum" value="1" />
-    <label>pageSize</label>
-    <input id="pageSize" value="10" />
-    <button id="loadBtn">加载项目</button>
+  <div id="nav"></div>
+  <div class="container">
+    <div class="page-header">
+      <h1>捐献项目</h1>
+      <p>浏览正在进行的众筹项目，为流浪猫的医疗、绝育、救助贡献一份力量</p>
+    </div>
+    <div class="grid grid-2" id="projectList">
+      <div class="loading"><div class="spinner"></div>加载中...</div>
+    </div>
+    <div id="pagination"></div>
   </div>
-
-  <div class="card">
-    <pre id="result"></pre>
-  </div>
-
   <script>
-    const resultEl = document.getElementById('result');
-    document.getElementById('loadBtn').addEventListener('click', async () => {
-      const pageNum = document.getElementById('pageNum').value;
-      const pageSize = document.getElementById('pageSize').value;
-      const data = await MVP.apiGet('/crowdfunding/page', { pageNum, pageSize });
-      resultEl.textContent = JSON.stringify(data, null, 2);
-    });
+    document.getElementById('nav').innerHTML = MVP.renderNav('donate-list');
+    let currentPage = 1;
+    const pageSize = 8;
+
+    async function loadProjects(page) {
+      currentPage = page;
+      const container = document.getElementById('projectList');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+      try {
+        const res = await MVP.apiGet('/crowdfunding/page', { page, size: pageSize });
+        if (res.code !== 200) { container.innerHTML = '<div class="empty"><p>加载失败</p></div>'; return; }
+        const records = res.data.records || [];
+        const total = res.data.total || 0;
+        const totalPages = Math.ceil(total / pageSize);
+        if (records.length === 0) {
+          container.innerHTML = '<div class="empty"><div class="icon">📋</div><p>暂无众筹项目</p></div>';
+          return;
+        }
+        container.innerHTML = records.map(p => {
+          const progress = p.progress || (p.targetAmount > 0 ? Math.round(p.currentAmount / p.targetAmount * 100) : 0);
+          const statusClass = p.status === 'ACTIVE' ? 'badge-active' : p.status === 'COMPLETED' ? 'badge-completed' : 'badge-cancelled';
+          const statusText = p.statusText || p.status;
+          return `
+          <div class="item-card" onclick="window.location.href='/mvp/donation-detail.html?id=${p.id}'">
+            <img class="cover" src="${MVP.catImg(p.coverImage || p.catCoverImage)}" alt="${p.title}" onerror="this.style.background='#edf2f7'" />
+            <div class="info">
+              <h3>${p.title}</h3>
+              <div class="meta">
+                <span>发起人: ${p.creatorName || '-'}</span>
+                <span class="badge ${statusClass}">${statusText}</span>
+              </div>
+              ${p.catName ? `<div class="meta" style="margin-top:4px;"><span>关联猫咪: ${p.catName}</span></div>` : ''}
+              <div class="progress-bar" style="margin-top:10px;">
+                <div class="fill" style="width:${Math.min(progress, 100)}%"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;">
+                <span style="color:var(--primary);font-weight:600;">¥${MVP.fmtMoney(p.currentAmount)} / ¥${MVP.fmtMoney(p.targetAmount)}</span>
+                <span style="color:var(--text-secondary);">${progress}%</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--text-secondary);">
+                <span>${p.supporterCount || 0} 人支持</span>
+                <span>${p.remainingDays != null ? p.remainingDays + ' 天剩余' : ''}</span>
+              </div>
+              <div style="margin-top:10px;">
+                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();window.location.href='/mvp/donation-new.html?crowdfundingId=${p.id}&title=${encodeURIComponent(p.title)}'">立即捐献</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+        const pagDiv = document.getElementById('pagination');
+        pagDiv.innerHTML = '';
+        if (totalPages > 1) pagDiv.appendChild(MVP.renderPagination(currentPage, totalPages, loadProjects));
+      } catch (err) {
+        container.innerHTML = `<div class="empty"><p>加载失败: ${err.message}</p></div>`;
+      }
+    }
+    loadProjects(1);
   </script>
 </body>
 </html>

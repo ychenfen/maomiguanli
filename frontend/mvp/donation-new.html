@@ -3,65 +3,117 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>发起捐献</title>
+  <title>发起捐献 - 校园猫咪救助</title>
   <link rel="stylesheet" href="/mvp/mvp.css" />
   <script src="/config.js"></script>
   <script src="/mvp/mvp.js"></script>
 </head>
 <body>
-  <header>
-    <h1>发起捐献</h1>
-    <nav>
-      <a href="/mvp/mvp-login.html">登录</a>
-      <a href="/mvp/donation-projects.html">项目列表</a>
-      <a href="/mvp/donation-mine.html">我的捐献</a>
-    </nav>
-  </header>
-
-  <div class="card">
-    <p class="small">支持捐献到众筹项目或指定猫咪（二选一）。需要登录 token。</p>
-    <label>crowdfundingId</label>
-    <input id="crowdfundingId" placeholder="可选" />
-    <label>catId</label>
-    <input id="catId" placeholder="可选" />
-    <label>amount</label>
-    <input id="amount" placeholder="例如 100.00" />
-    <label>paymentMethod</label>
-    <select id="paymentMethod">
-      <option value="WECHAT">WECHAT</option>
-      <option value="ALIPAY">ALIPAY</option>
-      <option value="OTHER">OTHER</option>
-    </select>
-    <label>transactionId</label>
-    <input id="transactionId" placeholder="可选" />
-    <label>isAnonymous</label>
-    <select id="isAnonymous">
-      <option value="false">false</option>
-      <option value="true">true</option>
-    </select>
-    <label>message</label>
-    <textarea id="message"></textarea>
-    <button id="submitBtn">提交捐献</button>
+  <div id="nav"></div>
+  <div class="container" style="max-width:580px;">
+    <div class="page-header">
+      <h1>发起捐献</h1>
+      <p id="subtitle">为众筹项目贡献一份力量</p>
+    </div>
+    <div class="card" style="padding:28px;">
+      <div id="projectInfo" style="margin-bottom:16px;"></div>
+      <div class="form-group">
+        <label>捐献金额 <span class="required">*</span></label>
+        <div class="amount-options">
+          <div class="opt" data-amount="5">¥5</div>
+          <div class="opt" data-amount="10">¥10</div>
+          <div class="opt selected" data-amount="20">¥20</div>
+          <div class="opt" data-amount="50">¥50</div>
+          <div class="opt" data-amount="100">¥100</div>
+          <div class="opt" data-amount="200">¥200</div>
+        </div>
+        <input id="amount" type="number" value="20" min="0.01" step="0.01" placeholder="自定义金额" />
+      </div>
+      <div class="form-group">
+        <label>留言（选填）</label>
+        <textarea id="message" placeholder="写下你的祝福或鼓励..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>支付方式</label>
+        <select id="paymentMethod">
+          <option value="WECHAT">微信支付</option>
+          <option value="ALIPAY">支付宝</option>
+          <option value="OTHER">其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" id="isAnonymous" style="width:auto;margin-right:6px;" /> 匿名捐献</label>
+      </div>
+      <button class="btn btn-primary btn-block" id="submitBtn" style="font-size:16px;padding:14px;">确认捐献</button>
+    </div>
   </div>
-
-  <div class="card">
-    <pre id="result"></pre>
-  </div>
-
   <script>
-    const resultEl = document.getElementById('result');
+    document.getElementById('nav').innerHTML = MVP.renderNav('donate-list');
+    const crowdfundingId = MVP.qs('crowdfundingId');
+    const title = MVP.qs('title');
+
+    // Show project info
+    if (crowdfundingId) {
+      document.getElementById('subtitle').textContent = `为「${decodeURIComponent(title || '')}」项目捐献`;
+      MVP.apiGet(`/crowdfunding/${crowdfundingId}`).then(res => {
+        if (res.code === 200 && res.data) {
+          const p = res.data;
+          const progress = p.progress || (p.targetAmount > 0 ? Math.round(p.currentAmount / p.targetAmount * 100) : 0);
+          document.getElementById('projectInfo').innerHTML = `
+            <div style="background:var(--primary-light);border-radius:8px;padding:14px;display:flex;gap:12px;align-items:center;">
+              <img src="${MVP.catImg(p.coverImage||p.catCoverImage)}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;" onerror="this.style.display='none'" />
+              <div style="flex:1;">
+                <strong>${p.title}</strong>
+                <div class="progress-bar" style="margin:6px 0;"><div class="fill" style="width:${Math.min(progress,100)}%"></div></div>
+                <div style="font-size:12px;color:var(--text-secondary);">已筹 ¥${MVP.fmtMoney(p.currentAmount)} / 目标 ¥${MVP.fmtMoney(p.targetAmount)} (${progress}%)</div>
+              </div>
+            </div>`;
+        }
+      });
+    }
+
+    // Amount options
+    document.querySelectorAll('.amount-options .opt').forEach(el => {
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.amount-options .opt').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('amount').value = el.dataset.amount;
+      });
+    });
+    document.getElementById('amount').addEventListener('input', () => {
+      document.querySelectorAll('.amount-options .opt').forEach(e => e.classList.remove('selected'));
+    });
+
+    // Submit
     document.getElementById('submitBtn').addEventListener('click', async () => {
+      if (!MVP.requireLogin()) return;
+      const amount = parseFloat(document.getElementById('amount').value);
+      if (!amount || amount < 0.01) { MVP.toast('请输入有效金额', 'error'); return; }
+
       const payload = {
-        crowdfundingId: document.getElementById('crowdfundingId').value || null,
-        catId: document.getElementById('catId').value || null,
-        amount: document.getElementById('amount').value || null,
-        paymentMethod: document.getElementById('paymentMethod').value || null,
-        transactionId: document.getElementById('transactionId').value || null,
-        isAnonymous: document.getElementById('isAnonymous').value === 'true',
-        message: document.getElementById('message').value || null
+        amount,
+        message: document.getElementById('message').value || null,
+        paymentMethod: document.getElementById('paymentMethod').value,
+        isAnonymous: document.getElementById('isAnonymous').checked
       };
-      const data = await MVP.apiPost('/donation', payload);
-      resultEl.textContent = JSON.stringify(data, null, 2);
+      if (crowdfundingId) payload.crowdfundingId = Number(crowdfundingId);
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = '提交中...';
+      try {
+        const res = await MVP.apiPost('/donation', payload);
+        if (res.code === 200) {
+          MVP.toast('捐献成功！感谢你的爱心！', 'success');
+          setTimeout(() => { window.location.href = '/mvp/donation-mine.html'; }, 1000);
+        } else {
+          MVP.toast(res.message || '捐献失败', 'error');
+          btn.disabled = false; btn.textContent = '确认捐献';
+        }
+      } catch (err) {
+        MVP.toast('网络错误: ' + err.message, 'error');
+        btn.disabled = false; btn.textContent = '确认捐献';
+      }
     });
   </script>
 </body>

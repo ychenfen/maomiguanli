@@ -3,42 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>捐献项目详情</title>
+  <title>项目详情 - 校园猫咪救助</title>
   <link rel="stylesheet" href="/mvp/mvp.css" />
   <script src="/config.js"></script>
   <script src="/mvp/mvp.js"></script>
 </head>
 <body>
-  <header>
-    <h1>捐献项目详情</h1>
-    <nav>
-      <a href="/mvp/donation-projects.html">项目列表</a>
-      <a href="/mvp/donation-new.html">发起捐献</a>
-    </nav>
-  </header>
-
-  <div class="card">
-    <label>crowdfundingId</label>
-    <input id="projectId" placeholder="例如 1" />
-    <button id="loadBtn">加载详情</button>
+  <div id="nav"></div>
+  <div class="container">
+    <div id="content"><div class="loading"><div class="spinner"></div>加载中...</div></div>
   </div>
-
-  <div class="card">
-    <pre id="result"></pre>
-  </div>
-
   <script>
-    const resultEl = document.getElementById('result');
-    const idInput = document.getElementById('projectId');
-    const idFromQuery = MVP.qs('id');
-    if (idFromQuery) idInput.value = idFromQuery;
+    document.getElementById('nav').innerHTML = MVP.renderNav('donate-list');
+    const projectId = MVP.qs('id');
 
-    document.getElementById('loadBtn').addEventListener('click', async () => {
-      const id = idInput.value.trim();
-      if (!id) return;
-      const data = await MVP.apiGet(`/crowdfunding/${id}`);
-      resultEl.textContent = JSON.stringify(data, null, 2);
-    });
+    async function loadDetail() {
+      if (!projectId) { document.getElementById('content').innerHTML = '<div class="empty"><p>参数缺失</p></div>'; return; }
+      try {
+        const res = await MVP.apiGet(`/crowdfunding/${projectId}`);
+        if (res.code !== 200 || !res.data) { document.getElementById('content').innerHTML = '<div class="empty"><p>项目不存在</p></div>'; return; }
+        const p = res.data;
+        const progress = p.progress || (p.targetAmount > 0 ? Math.round(p.currentAmount / p.targetAmount * 100) : 0);
+        const statusClass = p.status === 'ACTIVE' ? 'badge-active' : p.status === 'COMPLETED' ? 'badge-completed' : 'badge-cancelled';
+
+        let html = `
+          <div class="detail-header">
+            <img class="cover" src="${MVP.catImg(p.coverImage || p.catCoverImage)}" alt="${p.title}" onerror="this.style.background='#edf2f7'" />
+            <div class="info">
+              <h1>${p.title} <span class="badge ${statusClass}">${p.statusText || p.status}</span></h1>
+              <p class="desc">${p.description || '暂无描述'}</p>
+              <div class="progress-bar" style="height:12px;margin:12px 0;">
+                <div class="fill" style="width:${Math.min(progress, 100)}%"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:15px;margin-bottom:12px;">
+                <span style="color:var(--primary);font-weight:700;">已筹 ¥${MVP.fmtMoney(p.currentAmount)}</span>
+                <span>目标 ¥${MVP.fmtMoney(p.targetAmount)}</span>
+                <span style="color:var(--warning);font-weight:600;">${progress}%</span>
+              </div>
+              <div class="stats-row" style="margin-bottom:12px;">
+                <div class="stat-box"><div class="num">${p.supporterCount || 0}</div><div class="label">支持人数</div></div>
+                <div class="stat-box"><div class="num">${p.remainingDays != null ? p.remainingDays : '-'}</div><div class="label">剩余天数</div></div>
+                <div class="stat-box"><div class="num">¥${MVP.fmtMoney(p.remainingAmount)}</div><div class="label">还差</div></div>
+              </div>
+              <div style="display:flex;gap:10px;">
+                <a class="btn btn-primary" href="/mvp/donation-new.html?crowdfundingId=${p.id}&title=${encodeURIComponent(p.title)}">立即捐献</a>
+                <a class="btn btn-outline" href="/mvp/donation-projects.html">返回列表</a>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">项目信息</div>
+            <div class="kv-row"><span class="k">发起人</span><span class="v">${p.creatorName || '-'}</span></div>
+            ${p.catName ? `<div class="kv-row"><span class="k">关联猫咪</span><span class="v"><a href="/mvp/cloud-adoption-detail.html?catId=${p.catId}">${p.catName}</a></span></div>` : ''}
+            <div class="kv-row"><span class="k">分类</span><span class="v">${p.category || '-'}</span></div>
+            <div class="kv-row"><span class="k">开始日期</span><span class="v">${p.startDate || '-'}</span></div>
+            <div class="kv-row"><span class="k">结束日期</span><span class="v">${p.endDate || '-'}</span></div>
+            ${p.contactInfo ? `<div class="kv-row"><span class="k">联系方式</span><span class="v">${p.contactInfo}</span></div>` : ''}
+            <div class="kv-row"><span class="k">创建时间</span><span class="v">${MVP.fmtDate(p.createTime)}</span></div>
+          </div>`;
+
+        // 加载该项目的捐献记录
+        try {
+          const donRes = await MVP.apiGet(`/donation/crowdfunding/${p.id}`, { limit: 20 });
+          if (donRes.code === 200 && donRes.data && donRes.data.length > 0) {
+            html += `<div class="card"><div class="card-title">捐献记录（${donRes.data.length}条）</div><div class="table-wrap"><table>
+              <thead><tr><th>用户</th><th>金额</th><th>留言</th><th>时间</th></tr></thead><tbody>`;
+            donRes.data.forEach(d => {
+              html += `<tr><td>${d.isAnonymous ? '匿名用户' : (d.username || '-')}</td><td style="color:var(--warning);font-weight:600;">¥${MVP.fmtMoney(d.amount)}</td><td>${d.message || '-'}</td><td>${MVP.fmtDate(d.createTime)}</td></tr>`;
+            });
+            html += `</tbody></table></div></div>`;
+          }
+        } catch (e) {}
+
+        document.getElementById('content').innerHTML = html;
+      } catch (err) {
+        document.getElementById('content').innerHTML = `<div class="empty"><p>加载失败: ${err.message}</p></div>`;
+      }
+    }
+    loadDetail();
   </script>
 </body>
 </html>

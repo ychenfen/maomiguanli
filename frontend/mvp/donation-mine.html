@@ -3,35 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>我的捐献</title>
+  <title>我的捐献 - 校园猫咪救助</title>
   <link rel="stylesheet" href="/mvp/mvp.css" />
   <script src="/config.js"></script>
   <script src="/mvp/mvp.js"></script>
 </head>
 <body>
-  <header>
-    <h1>我的捐献</h1>
-    <nav>
-      <a href="/mvp/mvp-login.html">登录</a>
-      <a href="/mvp/donation-projects.html">项目列表</a>
-    </nav>
-  </header>
-
-  <div class="card">
-    <p class="small">需要登录 token（localStorage.user_token）。</p>
-    <button id="loadBtn">加载我的捐献</button>
+  <div id="nav"></div>
+  <div class="container">
+    <div class="page-header">
+      <h1>我的捐献/打赏</h1>
+      <p>查看你的所有捐献和打赏记录</p>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="num" id="statCount">-</div><div class="label">捐献次数</div></div>
+      <div class="stat-box"><div class="num" id="statTotal">-</div><div class="label">累计金额</div></div>
+    </div>
+    <div id="listContainer"><div class="loading"><div class="spinner"></div>加载中...</div></div>
+    <div id="pagination"></div>
   </div>
-
-  <div class="card">
-    <pre id="result"></pre>
-  </div>
-
   <script>
-    const resultEl = document.getElementById('result');
-    document.getElementById('loadBtn').addEventListener('click', async () => {
-      const data = await MVP.apiGet('/donation/my-donations');
-      resultEl.textContent = JSON.stringify(data, null, 2);
-    });
+    document.getElementById('nav').innerHTML = MVP.renderNav('donate-mine');
+    let currentPage = 1;
+    const pageSize = 10;
+
+    async function loadDonations(page) {
+      if (!MVP.requireLogin()) return;
+      currentPage = page;
+      const container = document.getElementById('listContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+      try {
+        const res = await MVP.apiGet('/donation/my-donations', { page, size: pageSize });
+        if (res.code !== 200) { container.innerHTML = '<div class="empty"><p>加载失败</p></div>'; return; }
+
+        // 可能返回数组或分页对象
+        let list, total;
+        if (Array.isArray(res.data)) {
+          list = res.data;
+          total = list.length;
+        } else if (res.data && res.data.records) {
+          list = res.data.records;
+          total = res.data.total || list.length;
+        } else {
+          list = [];
+          total = 0;
+        }
+
+        // 统计
+        let totalAmount = 0;
+        list.forEach(d => { totalAmount += Number(d.amount) || 0; });
+        document.getElementById('statCount').textContent = total;
+        document.getElementById('statTotal').textContent = '¥' + MVP.fmtMoney(totalAmount);
+
+        if (list.length === 0) {
+          container.innerHTML = '<div class="empty"><div class="icon">💝</div><p>你还没有捐献记录</p><div style="margin-top:12px;display:flex;gap:10px;justify-content:center;"><a href="/mvp/donation-projects.html" class="btn btn-primary btn-sm">去捐献</a><a href="/mvp/tip.html" class="btn btn-success btn-sm">去打赏</a></div></div>';
+          return;
+        }
+
+        container.innerHTML = `<div class="table-wrap"><table>
+          <thead><tr><th>类型</th><th>目标</th><th>金额</th><th>留言</th><th>支付方式</th><th>状态</th><th>时间</th></tr></thead>
+          <tbody>${list.map(d => {
+            const type = d.crowdfundingId ? '项目捐献' : (d.catId ? '猫咪打赏' : '捐献');
+            const target = d.crowdfundingTitle || d.catName || '-';
+            const statusClass = d.status === 'COMPLETED' ? 'badge-completed' : d.status === 'PENDING' ? 'badge-pending' : 'badge-active';
+            return `<tr>
+              <td><span class="badge ${d.crowdfundingId ? 'badge-active' : 'badge-completed'}">${type}</span></td>
+              <td>${target}</td>
+              <td style="color:var(--warning);font-weight:600;">¥${MVP.fmtMoney(d.amount)}</td>
+              <td>${d.message || '-'}</td>
+              <td>${d.paymentMethod || '-'}</td>
+              <td><span class="badge ${statusClass}">${d.statusText || d.status || '-'}</span></td>
+              <td>${MVP.fmtDate(d.createTime)}</td>
+            </tr>`;
+          }).join('')}</tbody></table></div>`;
+
+        // Pagination
+        if (!Array.isArray(res.data) && res.data.pages > 1) {
+          const pagDiv = document.getElementById('pagination');
+          pagDiv.innerHTML = '';
+          pagDiv.appendChild(MVP.renderPagination(currentPage, res.data.pages, loadDonations));
+        }
+      } catch (err) {
+        container.innerHTML = `<div class="empty"><p>加载失败: ${err.message}</p></div>`;
+      }
+    }
+    loadDonations(1);
   </script>
 </body>
 </html>
