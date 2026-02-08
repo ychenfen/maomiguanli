@@ -59,45 +59,56 @@
             const statusVal = document.getElementById('donStatusFilter').value;
             if (statusVal) params.status = statusVal;
 
-            const res = await API.get('/donation/page', params);
-            if (res.code === 200 && res.data) {
-                let records = res.data.records || [];
-                // Client-side type filter
-                if (typeVal === 'crowdfunding') records = records.filter(d => d.crowdfundingId);
-                if (typeVal === 'cat') records = records.filter(d => d.catId && !d.crowdfundingId);
+            const res = await ApiClient.request(API_ENDPOINTS.donation.list, {
+                method: 'GET',
+                params: params
+            });
 
-                if (records.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="10" class="text-center">暂无数据</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = records.map(d => {
-                    const type = d.crowdfundingId ? '项目捐献' : (d.catId ? '猫咪打赏' : '捐献');
-                    const typeBadge = d.crowdfundingId ? 'badge-primary' : 'badge-success';
-                    const target = d.crowdfundingTitle || d.catName || '-';
-                    return `<tr>
-                        <td>${d.id}</td>
-                        <td><span class="badge ${typeBadge}">${type}</span></td>
-                        <td>${d.username || d.userId}</td>
-                        <td>${target}</td>
-                        <td style="font-weight:600;color:#e67e22;">¥${(d.amount || 0).toFixed ? d.amount.toFixed(2) : d.amount || 0}</td>
-                        <td>${d.message || '-'}</td>
-                        <td>${d.paymentMethod || '-'}</td>
-                        <td>${d.isAnonymous ? '是' : '否'}</td>
-                        <td><span class="badge ${d.status==='COMPLETED'?'badge-success':d.status==='PENDING'?'badge-warning':'badge-secondary'}">${d.statusText || d.status || '-'}</span></td>
-                        <td>${(d.createTime || '').replace('T', ' ').substring(0, 16)}</td>
-                    </tr>`;
-                }).join('');
+            // ApiClient.request returns res.data when code===200
+            // So 'res' here is the page data object
+            const pageData = res;
+            let records = [];
 
-                const totalPages = res.data.pages || Math.ceil((res.data.total || 0) / donSize);
-                const pagDiv = document.getElementById('donationPagination');
-                pagDiv.innerHTML = '';
-                if (totalPages > 1) {
-                    for (let i = 1; i <= totalPages; i++) {
-                        pagDiv.innerHTML += `<button class="btn btn-sm ${i===donPage?'btn-primary':'btn-outline'}" onclick="refreshDonations(${i})">${i}</button> `;
-                    }
+            if (pageData && pageData.records) {
+                records = pageData.records;
+            } else if (Array.isArray(pageData)) {
+                records = pageData;
+            }
+
+            // Client-side type filter
+            if (typeVal === 'crowdfunding') records = records.filter(d => d.crowdfundingId);
+            if (typeVal === 'cat') records = records.filter(d => d.catId && !d.crowdfundingId);
+
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center">暂无数据</td></tr>';
+                return;
+            }
+            tbody.innerHTML = records.map(d => {
+                const type = d.crowdfundingId ? '项目捐献' : (d.catId ? '猫咪打赏' : '捐献');
+                const typeBadge = d.crowdfundingId ? 'badge-primary' : 'badge-success';
+                const target = d.crowdfundingTitle || d.catName || '-';
+                const amount = typeof d.amount === 'number' ? d.amount.toFixed(2) : (d.amount || 0);
+                return `<tr>
+                    <td>${d.id}</td>
+                    <td><span class="badge ${typeBadge}">${type}</span></td>
+                    <td>${d.username || d.userId || '-'}</td>
+                    <td>${target}</td>
+                    <td style="font-weight:600;color:#e67e22;">¥${amount}</td>
+                    <td>${d.message || '-'}</td>
+                    <td>${d.paymentMethod || '-'}</td>
+                    <td>${d.isAnonymous ? '是' : '否'}</td>
+                    <td><span class="badge ${d.status==='COMPLETED'?'badge-success':d.status==='PENDING'?'badge-warning':'badge-secondary'}">${d.statusText || d.status || '-'}</span></td>
+                    <td>${(d.createTime || '').replace('T', ' ').substring(0, 16)}</td>
+                </tr>`;
+            }).join('');
+
+            const totalPages = pageData.pages || Math.ceil((pageData.total || 0) / donSize);
+            const pagDiv = document.getElementById('donationPagination');
+            pagDiv.innerHTML = '';
+            if (totalPages > 1) {
+                for (let i = 1; i <= totalPages; i++) {
+                    pagDiv.innerHTML += `<button class="btn btn-sm ${i===donPage?'btn-primary':'btn-outline'}" onclick="refreshDonations(${i})">${i}</button> `;
                 }
-            } else {
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center">加载失败</td></tr>';
             }
         } catch (err) {
             tbody.innerHTML = `<tr><td colspan="10" class="text-center">加载失败: ${err.message}</td></tr>`;

@@ -1,7 +1,7 @@
 <!-- 云养管理 -->
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title">🐱 云养管理</h2>
+        <h2 class="card-title">☁️ 云养管理</h2>
         <div class="card-actions">
             <button class="btn btn-primary btn-sm" onclick="refreshCloudAdoptions()">刷新</button>
         </div>
@@ -52,36 +52,51 @@
             const params = { page: caPage, size: caSize };
             const statusVal = document.getElementById('caStatusFilter').value;
             if (statusVal) params.isActive = statusVal;
-            const res = await API.get('/cloud-adoption/page', params);
-            if (res.code === 200 && res.data) {
-                const records = res.data.records || [];
-                if (records.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="10" class="text-center">暂无数据</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = records.map(a => `<tr>
+
+            const res = await ApiClient.request(API_ENDPOINTS.cloudAdoption.list, {
+                method: 'GET',
+                params: params
+            });
+
+            // ApiClient.request returns res.data when code===200
+            const pageData = res;
+            let records = [];
+
+            if (pageData && pageData.records) {
+                records = pageData.records;
+            } else if (Array.isArray(pageData)) {
+                records = pageData;
+            }
+
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center">暂无数据</td></tr>';
+                return;
+            }
+            tbody.innerHTML = records.map(a => {
+                const monthlyAmt = typeof a.monthlyAmount === 'number' ? a.monthlyAmount.toFixed(2) : (a.monthlyAmount || 0);
+                const totalAmt = typeof a.totalAmount === 'number' ? a.totalAmount.toFixed(2) : (a.totalAmount || 0);
+                return `<tr>
                     <td>${a.id}</td>
-                    <td>${a.username || a.userId}</td>
-                    <td>${a.catName || a.catId}</td>
+                    <td>${a.username || a.userId || '-'}</td>
+                    <td>${a.catName || a.catId || '-'}</td>
                     <td>${a.adoptionName || '-'}</td>
-                    <td>${a.monthlyAmount || 0}</td>
+                    <td>¥${monthlyAmt}</td>
                     <td>${a.startDate || '-'}</td>
                     <td>${a.endDate || '-'}</td>
                     <td><span class="badge ${a.isActive ? 'badge-success' : 'badge-secondary'}">${a.isActive ? '进行中' : '已结束'}</span></td>
-                    <td>¥${(a.totalAmount || 0).toFixed ? a.totalAmount.toFixed(2) : a.totalAmount || 0}</td>
+                    <td>¥${totalAmt}</td>
                     <td>${(a.createTime || '').replace('T', ' ').substring(0, 16)}</td>
-                </tr>`).join('');
-                // Pagination
-                const totalPages = res.data.pages || Math.ceil((res.data.total || 0) / caSize);
-                const pagDiv = document.getElementById('cloudAdoptionPagination');
-                pagDiv.innerHTML = '';
-                if (totalPages > 1) {
-                    for (let i = 1; i <= totalPages; i++) {
-                        pagDiv.innerHTML += `<button class="btn btn-sm ${i===caPage?'btn-primary':'btn-outline'}" onclick="refreshCloudAdoptions(${i})">${i}</button> `;
-                    }
+                </tr>`;
+            }).join('');
+
+            // Pagination
+            const totalPages = pageData.pages || Math.ceil((pageData.total || 0) / caSize);
+            const pagDiv = document.getElementById('cloudAdoptionPagination');
+            pagDiv.innerHTML = '';
+            if (totalPages > 1) {
+                for (let i = 1; i <= totalPages; i++) {
+                    pagDiv.innerHTML += `<button class="btn btn-sm ${i===caPage?'btn-primary':'btn-outline'}" onclick="refreshCloudAdoptions(${i})">${i}</button> `;
                 }
-            } else {
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center">加载失败</td></tr>';
             }
         } catch (err) {
             tbody.innerHTML = `<tr><td colspan="10" class="text-center">加载失败: ${err.message}</td></tr>`;
