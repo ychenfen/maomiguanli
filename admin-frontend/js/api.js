@@ -12,6 +12,8 @@ const API = {
     // Dashboard
     dashboard: {
         statistics: `${API_BASE}/admin/dashboard/statistics`,
+        overview: `${API_BASE}/admin/dashboard/overview`,
+        home: `${API_BASE}/admin/dashboard/home`,
         userGrowth: `${API_BASE}/admin/dashboard/user-growth`,
         activityStats: `${API_BASE}/admin/dashboard/activity`,
         popularCats: `${API_BASE}/admin/dashboard/popular-cats`,
@@ -46,67 +48,68 @@ const API = {
         update: (id) => `${API_BASE}/cats/${id}`,
         delete: (id) => `${API_BASE}/cats/${id}`,
         updateStatus: (id) => `${API_BASE}/cats/${id}/status`,
-        statistics: `${API_BASE}/cats/statistics`
+        statistics: `${API_BASE}/cats/stats`
     },
 
-    // Adoption Management
+    // Adoption Management — 后端路径: /api/adoption-applications
     adoptions: {
-        list: `${API_BASE}/adoptions/page`,
-        detail: (id) => `${API_BASE}/adoptions/${id}`,
-        approve: (id) => `${API_BASE}/adoptions/${id}/approve`,
-        reject: (id) => `${API_BASE}/adoptions/${id}/reject`,
-        statistics: `${API_BASE}/adoptions/statistics`
+        list: `${API_BASE}/adoption-applications/page`,
+        detail: (id) => `${API_BASE}/adoption-applications/${id}`,
+        approve: (id) => `${API_BASE}/adoption-applications/${id}/review`,
+        reject: (id) => `${API_BASE}/adoption-applications/${id}/review`,
+        statistics: `${API_BASE}/adoption-applications/statistics`
     },
 
-    // Verification Management
+    // Verification Management — 后端路径: /api/verification
     verifications: {
-        list: `${API_BASE}/verifications/page`,
-        detail: (id) => `${API_BASE}/verifications/${id}`,
-        approve: (id) => `${API_BASE}/verifications/${id}/approve`,
-        reject: (id) => `${API_BASE}/verifications/${id}/reject`,
-        batchApprove: `${API_BASE}/verifications/batch-approve`,
-        statistics: `${API_BASE}/verifications/statistics`
+        list: `${API_BASE}/verification/page`,
+        detail: (id) => `${API_BASE}/verification/${id}`,
+        approve: (id) => `${API_BASE}/verification/review`,
+        reject: (id) => `${API_BASE}/verification/review`,
+        batchApprove: `${API_BASE}/verification/enhanced/batch-review`,
+        statistics: `${API_BASE}/verification/enhanced/statistics`
     },
 
-    // Rescue Management
+    // Rescue Management — 后端路径: /api/rescue-info
     rescues: {
-        list: `${API_BASE}/rescues/page`,
-        detail: (id) => `${API_BASE}/rescues/${id}`,
-        create: `${API_BASE}/rescues`,
-        update: (id) => `${API_BASE}/rescues/${id}`,
-        delete: (id) => `${API_BASE}/rescues/${id}`,
-        updateStatus: (id) => `${API_BASE}/rescues/${id}/status`,
-        assign: (id) => `${API_BASE}/rescues/${id}/assign`,
-        statistics: `${API_BASE}/rescues/statistics`
+        list: `${API_BASE}/rescue-info/page`,
+        detail: (id) => `${API_BASE}/rescue-info/${id}`,
+        create: `${API_BASE}/rescue-info`,
+        update: (id) => `${API_BASE}/rescue-info/${id}`,
+        delete: (id) => `${API_BASE}/rescue-info/${id}`,
+        updateStatus: (id) => `${API_BASE}/rescue-info/${id}/close`,
+        assign: (id) => `${API_BASE}/rescue-info/${id}/respond`,
+        statistics: `${API_BASE}/rescue-info/statistics`
     },
 
-    // Finance Management
+    // Finance Management — 后端路径: /api/finance
     finance: {
-        list: `${API_BASE}/finance/transactions/page`,
-        detail: (id) => `${API_BASE}/finance/transactions/${id}`,
-        approve: (id) => `${API_BASE}/finance/transactions/${id}/approve`,
-        reject: (id) => `${API_BASE}/finance/transactions/${id}/reject`,
-        statistics: `${API_BASE}/finance/statistics`,
-        report: `${API_BASE}/finance/report`,
+        list: `${API_BASE}/finance/page`,
+        detail: (id) => `${API_BASE}/finance/${id}`,
+        approve: (id) => `${API_BASE}/finance/${id}/approve`,
+        reject: (id) => `${API_BASE}/finance/${id}/approve`,
+        statistics: `${API_BASE}/finance/stats`,
+        report: `${API_BASE}/finance/export`,
         export: `${API_BASE}/finance/export`
     },
 
-    // Cat Tag Management
+    // Cat Tag Management — 后端路径: /api/cat-tags (无 /page，GET 根路径返回全部)
     catTags: {
-        list: `${API_BASE}/cat-tags/page`,
+        list: `${API_BASE}/cat-tags`,
+        listByType: (type) => `${API_BASE}/cat-tags/type/${type}`,
         detail: (id) => `${API_BASE}/cat-tags/${id}`,
         create: `${API_BASE}/cat-tags`,
         update: (id) => `${API_BASE}/cat-tags/${id}`,
         delete: (id) => `${API_BASE}/cat-tags/${id}`
     },
 
-    // University Management
+    // University Management — 后端路径: /api/university (单数)
     universities: {
-        list: `${API_BASE}/universities/page`,
-        detail: (id) => `${API_BASE}/universities/${id}`,
-        create: `${API_BASE}/universities`,
-        update: (id) => `${API_BASE}/universities/${id}`,
-        delete: (id) => `${API_BASE}/universities/${id}`
+        list: `${API_BASE}/university/page`,
+        detail: (id) => `${API_BASE}/university/${id}`,
+        create: `${API_BASE}/university`,
+        update: (id) => `${API_BASE}/university/${id}`,
+        delete: (id) => `${API_BASE}/university/${id}`
     },
 
     // Dynamic/Community Management
@@ -117,25 +120,53 @@ const API = {
         statistics: `${API_BASE}/dynamics/statistics`
     },
 
-    // Crowdfunding Management
+    // Crowdfunding Management — approve→activate, reject→cancel
     crowdfunding: {
         list: `${API_BASE}/crowdfunding/page`,
         detail: (id) => `${API_BASE}/crowdfunding/${id}`,
-        approve: (id) => `${API_BASE}/crowdfunding/${id}/approve`,
-        reject: (id) => `${API_BASE}/crowdfunding/${id}/reject`,
-        close: (id) => `${API_BASE}/crowdfunding/${id}/close`,
-        statistics: `${API_BASE}/crowdfunding/statistics`
+        approve: (id) => `${API_BASE}/crowdfunding/${id}/activate`,
+        reject: (id) => `${API_BASE}/crowdfunding/${id}/cancel`,
+        close: (id) => `${API_BASE}/crowdfunding/${id}/cancel`,
+        statistics: `${API_BASE}/crowdfunding/stats/creator`
     },
 
-    // Notification Management
+    // Notification Management — send-batch→batch-send
     notifications: {
         list: `${API_BASE}/notifications/page`,
         detail: (id) => `${API_BASE}/notifications/${id}`,
         send: `${API_BASE}/notifications/send`,
-        sendBatch: `${API_BASE}/notifications/send-batch`,
+        sendBatch: `${API_BASE}/notifications/batch-send`,
         delete: (id) => `${API_BASE}/notifications/${id}`,
         statistics: `${API_BASE}/notifications/statistics`
-    }
+    },
+
+    // Cloud Adoption Management
+    cloudAdoption: {
+        list: `${API_BASE}/cloud-adoption/page`,
+        detail: (id) => `${API_BASE}/cloud-adoption/${id}`,
+        myAdoptions: `${API_BASE}/cloud-adoption/my-adoptions`,
+        create: `${API_BASE}/cloud-adoption`,
+        update: (id) => `${API_BASE}/cloud-adoption/${id}`,
+        cancel: (id) => `${API_BASE}/cloud-adoption/${id}/cancel`,
+        renew: (id) => `${API_BASE}/cloud-adoption/${id}/renew`,
+        stats: `${API_BASE}/cloud-adoption/stats`
+    },
+
+    // Donation Management
+    donation: {
+        list: `${API_BASE}/donation/page`,
+        detail: (id) => `${API_BASE}/donation/${id}`,
+        myDonations: `${API_BASE}/donation/my-donations`,
+        create: `${API_BASE}/donation`,
+        catDonations: (catId) => `${API_BASE}/donation/cat/${catId}`,
+        crowdfundingDonations: (cfId) => `${API_BASE}/donation/crowdfunding/${cfId}`,
+        totalByCat: (catId) => `${API_BASE}/donation/total/cat/${catId}`,
+        totalByCrowdfunding: (cfId) => `${API_BASE}/donation/total/crowdfunding/${cfId}`,
+        userStats: `${API_BASE}/donation/stats/user`
+    },
+
+    // Health check
+    health: `${API_BASE}/health`
 };
 
 // Make API_ENDPOINTS globally accessible

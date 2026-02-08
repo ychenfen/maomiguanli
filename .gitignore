@@ -1,0 +1,6 @@
+
+# Runtime logs
+backend/backend_run.log
+backend/logs/
+*.log
+node_modules/
