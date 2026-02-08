@@ -6,15 +6,13 @@
 
 ```bash
 # 用户登录（获取 user token）
-TOKEN=$(curl -s -X POST "http://localhost:8080/api/users/login" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=zhangsan&password=123456" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['token'])")
+TOKEN=$(curl -s -X POST "http://localhost:8080/api/users/login?username=zhangsan&password=123456" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['token'])")
 echo "TOKEN=$TOKEN"
 
 # 管理员登录
-ADMIN_TOKEN=$(curl -s -X POST "http://localhost:8080/api/users/login" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin&password=123456" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['token'])")
+ADMIN_TOKEN=$(curl -s -X POST "http://localhost:8080/api/users/login?username=admin&password=123456" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['token'])")
 echo "ADMIN_TOKEN=$ADMIN_TOKEN"
 ```
 
@@ -159,9 +157,8 @@ curl -s "http://localhost:8080/api/donation/page?page=1&size=10" \
 ```bash
 #!/bin/bash
 echo "=== 1. 登录 ==="
-TOKEN=$(curl -s -X POST "http://localhost:8080/api/users/login" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=zhangsan&password=123456" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['token'])")
+TOKEN=$(curl -s -X POST "http://localhost:8080/api/users/login?username=zhangsan&password=123456" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['token'])")
 echo "Token: ${TOKEN:0:20}..."
 
 echo "=== 2. 创建云养 ==="
