@@ -3,35 +3,66 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>我的云养</title>
+  <title>我的云养 - 校园猫咪救助</title>
   <link rel="stylesheet" href="/mvp/mvp.css" />
   <script src="/config.js"></script>
   <script src="/mvp/mvp.js"></script>
 </head>
 <body>
-  <header>
-    <h1>我的云养</h1>
-    <nav>
-      <a href="/mvp/mvp-login.html">登录</a>
-      <a href="/mvp/cloud-adoption-list.html">云养列表</a>
-    </nav>
-  </header>
-
-  <div class="card">
-    <p class="small">需要登录 token（localStorage.user_token）。</p>
-    <button id="loadBtn">加载我的云养</button>
+  <div id="nav"></div>
+  <div class="container">
+    <div class="page-header">
+      <h1>我的云养</h1>
+      <p>查看和管理你正在进行的云养记录</p>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="num" id="statActive">-</div><div class="label">进行中</div></div>
+      <div class="stat-box"><div class="num" id="statTotal">-</div><div class="label">累计金额</div></div>
+      <div class="stat-box"><div class="num" id="statExpiring">-</div><div class="label">即将到期</div></div>
+    </div>
+    <div id="listContainer"><div class="loading"><div class="spinner"></div>加载中...</div></div>
   </div>
-
-  <div class="card">
-    <pre id="result"></pre>
-  </div>
-
   <script>
-    const resultEl = document.getElementById('result');
-    document.getElementById('loadBtn').addEventListener('click', async () => {
-      const data = await MVP.apiGet('/cloud-adoption/my-adoptions');
-      resultEl.textContent = JSON.stringify(data, null, 2);
-    });
+    document.getElementById('nav').innerHTML = MVP.renderNav('cloud-mine');
+    async function load() {
+      if (!MVP.requireLogin()) return;
+      const container = document.getElementById('listContainer');
+      try {
+        const statsRes = await MVP.apiGet('/cloud-adoption/stats');
+        if (statsRes.code === 200 && statsRes.data) {
+          document.getElementById('statActive').textContent = statsRes.data.activeCount || 0;
+          document.getElementById('statTotal').textContent = '¥' + MVP.fmtMoney(statsRes.data.totalAmount);
+          document.getElementById('statExpiring').textContent = statsRes.data.expiringCount || 0;
+        }
+        const res = await MVP.apiGet('/cloud-adoption/my-adoptions');
+        if (res.code !== 200) { container.innerHTML = '<div class="empty"><p>加载失败</p></div>'; return; }
+        const list = res.data || [];
+        if (list.length === 0) {
+          container.innerHTML = '<div class="empty"><div class="icon">🐱</div><p>你还没有云养记录</p><a href="/mvp/cloud-adoption-order.html" class="btn btn-primary" style="margin-top:12px;">去发起云养</a></div>';
+          return;
+        }
+        container.innerHTML = '<div class="grid grid-2">' + list.map(a => `
+          <div class="item-card" onclick="window.location.href='/mvp/cloud-adoption-detail.html?adoptionId=${a.id}'">
+            <img class="cover" src="${MVP.catImg(a.catCoverImage)}" alt="${a.catName}" style="height:140px;" onerror="this.style.background='#edf2f7'" />
+            <div class="info">
+              <h3>${a.adoptionName || a.catName}</h3>
+              <div class="meta">
+                <span>猫咪: ${a.catName}</span>
+                <span class="badge ${a.isActive ? 'badge-active' : 'badge-cancelled'}">${a.isActive ? '进行中' : '已结束'}</span>
+              </div>
+              <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:var(--primary);font-weight:600;font-size:18px;">¥${MVP.fmtMoney(a.monthlyAmount)}<span style="font-size:12px;color:var(--text-secondary);font-weight:400;">/月</span></span>
+                <span style="font-size:12px;color:var(--text-secondary);">${a.startDate} ~ ${a.endDate}</span>
+              </div>
+              ${a.message ? `<div style="margin-top:8px;font-size:13px;color:var(--text-secondary);background:#f7fafc;padding:8px;border-radius:6px;">"${a.message}"</div>` : ''}
+            </div>
+          </div>
+        `).join('') + '</div>';
+      } catch (err) {
+        container.innerHTML = `<div class="empty"><p>加载失败: ${err.message}</p></div>`;
+      }
+    }
+    load();
   </script>
 </body>
 </html>

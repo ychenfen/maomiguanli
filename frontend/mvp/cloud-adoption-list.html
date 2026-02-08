@@ -3,42 +3,105 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>云养列表</title>
+  <title>云养猫咪 - 校园猫咪救助</title>
   <link rel="stylesheet" href="/mvp/mvp.css" />
   <script src="/config.js"></script>
   <script src="/mvp/mvp.js"></script>
 </head>
 <body>
-  <header>
-    <h1>云养列表</h1>
-    <nav>
-      <a href="/mvp/mvp-login.html">登录</a>
-      <a href="/mvp/cloud-adoption-order.html">发起云养</a>
-      <a href="/mvp/cloud-adoption-mine.html">我的云养</a>
-    </nav>
-  </header>
+  <div id="nav"></div>
+  <div class="container">
+    <div class="page-header">
+      <h1>云养猫咪</h1>
+      <p>选择一只猫咪，开始你的云养之旅。每月定额资助，让流浪猫感受温暖。</p>
+    </div>
 
-  <div class="card">
-    <label>pageNum</label>
-    <input id="pageNum" value="1" />
-    <label>pageSize</label>
-    <input id="pageSize" value="10" />
-    <button id="loadBtn">加载列表</button>
-  </div>
+    <!-- 统计 -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-box"><div class="num" id="statTotal">-</div><div class="label">可云养猫咪</div></div>
+      <div class="stat-box"><div class="num" id="statActive">-</div><div class="label">进行中云养</div></div>
+      <div class="stat-box"><div class="num" id="statAmount">-</div><div class="label">累计云养金额</div></div>
+    </div>
 
-  <div class="card">
-    <h3>结果</h3>
-    <pre id="result"></pre>
+    <!-- 猫咪列表 -->
+    <div class="grid grid-3" id="catList">
+      <div class="loading"><div class="spinner"></div>加载中...</div>
+    </div>
+    <div id="pagination"></div>
   </div>
 
   <script>
-    const resultEl = document.getElementById('result');
-    document.getElementById('loadBtn').addEventListener('click', async () => {
-      const pageNum = document.getElementById('pageNum').value;
-      const pageSize = document.getElementById('pageSize').value;
-      const data = await MVP.apiGet('/cloud-adoption/page', { pageNum, pageSize });
-      resultEl.textContent = JSON.stringify(data, null, 2);
-    });
+    document.getElementById('nav').innerHTML = MVP.renderNav('cloud-list');
+
+    let currentPage = 1;
+    const pageSize = 9;
+
+    async function loadCats(page) {
+      currentPage = page;
+      const container = document.getElementById('catList');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+
+      try {
+        const data = await MVP.apiGet('/cats/page', { page, size: pageSize });
+        if (data.code !== 200) { container.innerHTML = '<div class="empty"><p>加载失败</p></div>'; return; }
+
+        const records = data.data.records || [];
+        const total = data.data.total || 0;
+        const totalPages = Math.ceil(total / pageSize);
+
+        if (records.length === 0) {
+          container.innerHTML = '<div class="empty"><div class="icon">🐱</div><p>暂无猫咪数据</p></div>';
+          return;
+        }
+
+        container.innerHTML = records.map(cat => `
+          <div class="item-card" onclick="window.location.href='/mvp/cloud-adoption-detail.html?catId=${cat.id}'">
+            <img class="cover" src="${MVP.catImg(cat.coverImage)}" alt="${cat.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 150%22><rect fill=%22%23edf2f7%22 width=%22200%22 height=%22150%22/><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23a0aec0%22 font-size=%2240%22>🐱</text></svg>'" />
+            <div class="info">
+              <h3>${cat.name}</h3>
+              <div class="meta">
+                <span>品种: ${cat.breed || '未知'}</span>
+                <span>性别: ${cat.gender === 1 ? '公' : cat.gender === 2 ? '母' : '未知'}</span>
+              </div>
+              <div class="meta" style="margin-top:6px;">
+                <span>状态: <span class="badge badge-active">${cat.statusText || cat.status || '正常'}</span></span>
+              </div>
+              <div style="margin-top:10px;">
+                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();window.location.href='/mvp/cloud-adoption-order.html?catId=${cat.id}&catName=${encodeURIComponent(cat.name)}'">发起云养</button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+
+        // Pagination
+        const pagDiv = document.getElementById('pagination');
+        pagDiv.innerHTML = '';
+        if (totalPages > 1) {
+          pagDiv.appendChild(MVP.renderPagination(currentPage, totalPages, loadCats));
+        }
+      } catch (err) {
+        container.innerHTML = `<div class="empty"><p>加载失败: ${err.message}</p></div>`;
+      }
+    }
+
+    async function loadStats() {
+      try {
+        if (MVP.isLoggedIn()) {
+          const stats = await MVP.apiGet('/cloud-adoption/stats');
+          if (stats.code === 200 && stats.data) {
+            document.getElementById('statActive').textContent = stats.data.activeCount || 0;
+            document.getElementById('statAmount').textContent = '¥' + MVP.fmtMoney(stats.data.totalAmount);
+          }
+        }
+        const cats = await MVP.apiGet('/cats/page', { page: 1, size: 1 });
+        if (cats.code === 200) {
+          document.getElementById('statTotal').textContent = cats.data.total || 0;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    loadCats(1);
+    loadStats();
   </script>
 </body>
 </html>

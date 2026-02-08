@@ -3,55 +3,169 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>发起云养</title>
+  <title>发起云养 - 校园猫咪救助</title>
   <link rel="stylesheet" href="/mvp/mvp.css" />
   <script src="/config.js"></script>
   <script src="/mvp/mvp.js"></script>
 </head>
 <body>
-  <header>
-    <h1>发起云养</h1>
-    <nav>
-      <a href="/mvp/mvp-login.html">登录</a>
-      <a href="/mvp/cloud-adoption-list.html">云养列表</a>
-    </nav>
-  </header>
+  <div id="nav"></div>
+  <div class="container" style="max-width:640px;">
+    <div class="page-header">
+      <h1>发起云养</h1>
+      <p>选择猫咪并设置每月资助金额，开始你的云养之旅</p>
+    </div>
 
-  <div class="card">
-    <p class="small">需要登录 token（localStorage.user_token）。</p>
-    <label>catId</label>
-    <input id="catId" placeholder="必填" />
-    <label>adoptionName</label>
-    <input id="adoptionName" placeholder="可选" />
-    <label>monthlyAmount</label>
-    <input id="monthlyAmount" placeholder="例如 99.00" />
-    <label>startDate</label>
-    <input id="startDate" placeholder="YYYY-MM-DD" />
-    <label>endDate</label>
-    <input id="endDate" placeholder="YYYY-MM-DD" />
-    <label>message</label>
-    <textarea id="message"></textarea>
-    <button id="submitBtn">提交云养</button>
-  </div>
+    <div class="card" style="padding:28px;">
+      <div class="form-group">
+        <label>选择猫咪 <span class="required">*</span></label>
+        <select id="catId">
+          <option value="">加载中...</option>
+        </select>
+        <div id="catPreview" style="margin-top:8px;"></div>
+      </div>
 
-  <div class="card">
-    <pre id="result"></pre>
+      <div class="form-group">
+        <label>云养名称 <span class="required">*</span></label>
+        <input id="adoptionName" placeholder="例如：陪伴小橘的日子" />
+      </div>
+
+      <div class="form-group">
+        <label>每月云养金额 <span class="required">*</span></label>
+        <div class="amount-options">
+          <div class="opt" data-amount="10">¥10</div>
+          <div class="opt" data-amount="20">¥20</div>
+          <div class="opt selected" data-amount="30">¥30</div>
+          <div class="opt" data-amount="50">¥50</div>
+          <div class="opt" data-amount="100">¥100</div>
+        </div>
+        <input id="monthlyAmount" type="number" value="30" min="0.01" step="0.01" placeholder="自定义金额" />
+      </div>
+
+      <div class="form-group">
+        <label>云养时长</label>
+        <select id="duration">
+          <option value="3">3 个月</option>
+          <option value="6" selected>6 个月</option>
+          <option value="12">12 个月</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>寄语（选填）</label>
+        <textarea id="message" placeholder="写下你对猫咪的祝福..."></textarea>
+      </div>
+
+      <div style="background:var(--primary-light);border-radius:8px;padding:14px;margin-bottom:16px;font-size:14px;">
+        <strong>费用预估：</strong><span id="costPreview">¥180.00（6个月 × ¥30.00/月）</span>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="submitBtn" style="font-size:16px;padding:14px;">确认发起云养</button>
+    </div>
   </div>
 
   <script>
-    const resultEl = document.getElementById('result');
+    document.getElementById('nav').innerHTML = MVP.renderNav('cloud-order');
+
+    const qCatId = MVP.qs('catId');
+    const qCatName = MVP.qs('catName');
+
+    // Load cats
+    async function loadCats() {
+      const sel = document.getElementById('catId');
+      try {
+        const res = await MVP.apiGet('/cats/page', { page: 1, size: 100 });
+        if (res.code === 200) {
+          sel.innerHTML = '<option value="">请选择猫咪</option>' +
+            res.data.records.map(c => `<option value="${c.id}" ${String(c.id)===qCatId?'selected':''}>${c.name} (${c.breed||'未知品种'})</option>`).join('');
+          if (qCatId) updatePreview(qCatId, res.data.records);
+        }
+      } catch (e) { sel.innerHTML = '<option value="">加载失败</option>'; }
+    }
+
+    function updatePreview(catId, records) {
+      const cat = records && records.find(c => String(c.id) === String(catId));
+      const div = document.getElementById('catPreview');
+      if (cat) {
+        div.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:8px;background:#f7fafc;border-radius:8px;">
+          <img src="${MVP.catImg(cat.coverImage)}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;" onerror="this.style.display='none'" />
+          <div><strong>${cat.name}</strong><div style="font-size:12px;color:var(--text-secondary);">${cat.breed||''} · ${cat.gender===1?'公':cat.gender===2?'母':'未知'}</div></div>
+        </div>`;
+        if (!document.getElementById('adoptionName').value) {
+          document.getElementById('adoptionName').value = `陪伴${cat.name}`;
+        }
+      } else { div.innerHTML = ''; }
+    }
+
+    // Amount options
+    document.querySelectorAll('.amount-options .opt').forEach(el => {
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.amount-options .opt').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('monthlyAmount').value = el.dataset.amount;
+        updateCost();
+      });
+    });
+    document.getElementById('monthlyAmount').addEventListener('input', () => {
+      document.querySelectorAll('.amount-options .opt').forEach(e => e.classList.remove('selected'));
+      updateCost();
+    });
+    document.getElementById('duration').addEventListener('change', updateCost);
+
+    function updateCost() {
+      const amount = parseFloat(document.getElementById('monthlyAmount').value) || 0;
+      const months = parseInt(document.getElementById('duration').value) || 6;
+      document.getElementById('costPreview').textContent = `¥${(amount * months).toFixed(2)}（${months}个月 × ¥${amount.toFixed(2)}/月）`;
+    }
+
+    // Submit
     document.getElementById('submitBtn').addEventListener('click', async () => {
+      if (!MVP.requireLogin()) return;
+      const catId = document.getElementById('catId').value;
+      const adoptionName = document.getElementById('adoptionName').value.trim();
+      const monthlyAmount = parseFloat(document.getElementById('monthlyAmount').value);
+      const duration = parseInt(document.getElementById('duration').value);
+
+      if (!catId) { MVP.toast('请选择猫咪', 'error'); return; }
+      if (!adoptionName) { MVP.toast('请输入云养名称', 'error'); return; }
+      if (!monthlyAmount || monthlyAmount < 0.01) { MVP.toast('请输入有效金额', 'error'); return; }
+
+      const today = new Date();
+      const endDate = new Date(today);
+      endDate.setMonth(endDate.getMonth() + duration);
+
       const payload = {
-        catId: Number(document.getElementById('catId').value),
-        adoptionName: document.getElementById('adoptionName').value || null,
-        monthlyAmount: document.getElementById('monthlyAmount').value || null,
-        startDate: document.getElementById('startDate').value || null,
-        endDate: document.getElementById('endDate').value || null,
+        catId: Number(catId),
+        adoptionName,
+        monthlyAmount,
+        startDate: today.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
         message: document.getElementById('message').value || null
       };
-      const data = await MVP.apiPost('/cloud-adoption', payload);
-      resultEl.textContent = JSON.stringify(data, null, 2);
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = '提交中...';
+
+      try {
+        const res = await MVP.apiPost('/cloud-adoption', payload);
+        if (res.code === 200) {
+          MVP.toast('云养创建成功！', 'success');
+          setTimeout(() => { window.location.href = '/mvp/cloud-adoption-mine.html'; }, 1000);
+        } else {
+          MVP.toast(res.message || '创建失败', 'error');
+          btn.disabled = false;
+          btn.textContent = '确认发起云养';
+        }
+      } catch (err) {
+        MVP.toast('网络错误: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '确认发起云养';
+      }
     });
+
+    loadCats();
+    updateCost();
   </script>
 </body>
 </html>

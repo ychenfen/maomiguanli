@@ -3,42 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>云养详情</title>
+  <title>猫咪详情 - 校园猫咪救助</title>
   <link rel="stylesheet" href="/mvp/mvp.css" />
   <script src="/config.js"></script>
   <script src="/mvp/mvp.js"></script>
 </head>
 <body>
-  <header>
-    <h1>云养详情</h1>
-    <nav>
-      <a href="/mvp/cloud-adoption-list.html">云养列表</a>
-      <a href="/mvp/cloud-adoption-order.html">发起云养</a>
-    </nav>
-  </header>
-
-  <div class="card">
-    <label>云养 ID</label>
-    <input id="adoptionId" placeholder="例如 1" />
-    <button id="loadBtn">加载详情</button>
-  </div>
-
-  <div class="card">
-    <pre id="result"></pre>
+  <div id="nav"></div>
+  <div class="container">
+    <div id="content"><div class="loading"><div class="spinner"></div>加载中...</div></div>
   </div>
 
   <script>
-    const resultEl = document.getElementById('result');
-    const idInput = document.getElementById('adoptionId');
-    const idFromQuery = MVP.qs('id');
-    if (idFromQuery) idInput.value = idFromQuery;
+    document.getElementById('nav').innerHTML = MVP.renderNav('cloud-list');
 
-    document.getElementById('loadBtn').addEventListener('click', async () => {
-      const id = idInput.value.trim();
-      if (!id) return;
-      const data = await MVP.apiGet(`/cloud-adoption/${id}`);
-      resultEl.textContent = JSON.stringify(data, null, 2);
-    });
+    const catId = MVP.qs('catId');
+    const adoptionId = MVP.qs('adoptionId');
+
+    async function loadDetail() {
+      if (!catId && !adoptionId) {
+        document.getElementById('content').innerHTML = '<div class="empty"><p>参数缺失</p></div>';
+        return;
+      }
+      try {
+        let cat = null, adoption = null;
+        if (adoptionId) {
+          const res = await MVP.apiGet(`/cloud-adoption/${adoptionId}`);
+          if (res.code === 200) {
+            adoption = res.data;
+            if (adoption.catId) { const cr = await MVP.apiGet(`/cats/${adoption.catId}`); if (cr.code===200) cat=cr.data; }
+          }
+        } else {
+          const cr = await MVP.apiGet(`/cats/${catId}`);
+          if (cr.code === 200) cat = cr.data;
+        }
+        if (!cat && !adoption) { document.getElementById('content').innerHTML = '<div class="empty"><p>未找到数据</p></div>'; return; }
+        const c = cat || {};
+        const a = adoption;
+        let html = `
+          <div class="detail-header">
+            <img class="cover" src="${MVP.catImg(c.coverImage || (a&&a.catCoverImage))}" alt="${c.name||(a&&a.catName)||''}" onerror="this.style.background='#edf2f7'" />
+            <div class="info">
+              <h1>${c.name||(a&&a.catName)||'猫咪'}</h1>
+              <p class="desc">${c.description||c.introduction||'这是一只可爱的猫咪，等待你的关爱。'}</p>
+              <div class="kv-row"><span class="k">品种</span><span class="v">${c.breed||'未知'}</span></div>
+              <div class="kv-row"><span class="k">性别</span><span class="v">${c.gender===1?'公':c.gender===2?'母':'未知'}</span></div>
+              <div class="kv-row"><span class="k">年龄</span><span class="v">${c.age||'未知'}</span></div>
+              <div class="kv-row"><span class="k">状态</span><span class="v"><span class="badge badge-active">${c.statusText||c.status||'正常'}</span></span></div>
+              ${c.location?`<div class="kv-row"><span class="k">位置</span><span class="v">${c.location}</span></div>`:''}
+              <div style="margin-top:16px;display:flex;gap:10px;">
+                <a class="btn btn-primary" href="/mvp/cloud-adoption-order.html?catId=${c.id||(a&&a.catId)}&catName=${encodeURIComponent(c.name||(a&&a.catName)||'')}">发起云养</a>
+                <a class="btn btn-success" href="/mvp/tip.html?catId=${c.id||(a&&a.catId)}&catName=${encodeURIComponent(c.name||(a&&a.catName)||'')}">打赏猫咪</a>
+              </div>
+            </div>
+          </div>`;
+        if (a) {
+          html += `<div class="card"><div class="card-title">云养记录详情</div>
+            <div class="kv-row"><span class="k">云养名称</span><span class="v">${a.adoptionName||'-'}</span></div>
+            <div class="kv-row"><span class="k">每月金额</span><span class="v" style="color:var(--primary);font-size:18px;">¥${MVP.fmtMoney(a.monthlyAmount)}</span></div>
+            <div class="kv-row"><span class="k">开始日期</span><span class="v">${a.startDate||'-'}</span></div>
+            <div class="kv-row"><span class="k">结束日期</span><span class="v">${a.endDate||'-'}</span></div>
+            <div class="kv-row"><span class="k">状态</span><span class="v"><span class="badge ${a.isActive?'badge-active':'badge-cancelled'}">${a.isActive?'进行中':'已结束'}</span></span></div>
+            <div class="kv-row"><span class="k">累计金额</span><span class="v">¥${MVP.fmtMoney(a.totalAmount)}</span></div>
+            <div class="kv-row"><span class="k">寄语</span><span class="v">${a.message||'-'}</span></div>
+            <div class="kv-row"><span class="k">创建时间</span><span class="v">${MVP.fmtDate(a.createTime)}</span></div>
+          </div>`;
+        }
+        if (c.id) {
+          try {
+            const donRes = await MVP.apiGet(`/donation/cat/${c.id}`, {limit:10});
+            if (donRes.code===200 && donRes.data && donRes.data.length>0) {
+              html += `<div class="card"><div class="card-title">最近打赏记录</div><div class="table-wrap"><table>
+                <thead><tr><th>用户</th><th>金额</th><th>留言</th><th>时间</th></tr></thead><tbody>`;
+              donRes.data.forEach(d => {
+                html += `<tr><td>${d.isAnonymous?'匿名用户':(d.username||'-')}</td><td style="color:var(--warning);font-weight:600;">¥${MVP.fmtMoney(d.amount)}</td><td>${d.message||'-'}</td><td>${MVP.fmtDate(d.createTime)}</td></tr>`;
+              });
+              html += `</tbody></table></div></div>`;
+            }
+          } catch(e) {}
+        }
+        document.getElementById('content').innerHTML = html;
+      } catch (err) {
+        document.getElementById('content').innerHTML = `<div class="empty"><p>加载失败: ${err.message}</p></div>`;
+      }
+    }
+    loadDetail();
   </script>
 </body>
 </html>
