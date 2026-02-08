@@ -1,0 +1,109 @@
+<!-- 捐献/打赏管理 -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">💝 捐献/打赏管理</h2>
+        <div class="card-actions">
+            <button class="btn btn-primary btn-sm" onclick="refreshDonations()">刷新</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="filter-bar" style="margin-bottom:16px;display:flex;gap:10px;">
+            <select id="donTypeFilter" onchange="refreshDonations()" style="padding:6px 12px;border:1px solid #ddd;border-radius:4px;">
+                <option value="">全部类型</option>
+                <option value="crowdfunding">项目捐献</option>
+                <option value="cat">猫咪打赏</option>
+            </select>
+            <select id="donStatusFilter" onchange="refreshDonations()" style="padding:6px 12px;border:1px solid #ddd;border-radius:4px;">
+                <option value="">全部状态</option>
+                <option value="COMPLETED">已完成</option>
+                <option value="PENDING">待处理</option>
+            </select>
+        </div>
+        <div class="table-responsive">
+            <table class="table" id="donationTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>类型</th>
+                        <th>用户</th>
+                        <th>目标</th>
+                        <th>金额(元)</th>
+                        <th>留言</th>
+                        <th>支付方式</th>
+                        <th>匿名</th>
+                        <th>状态</th>
+                        <th>时间</th>
+                    </tr>
+                </thead>
+                <tbody id="donationBody">
+                    <tr><td colspan="10" class="text-center">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="donationPagination" class="pagination-wrap"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    let donPage = 1;
+    const donSize = 10;
+
+    window.refreshDonations = async function(page) {
+        if (page) donPage = page;
+        const tbody = document.getElementById('donationBody');
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center">加载中...</td></tr>';
+        try {
+            const params = { page: donPage, size: donSize };
+            const typeVal = document.getElementById('donTypeFilter').value;
+            const statusVal = document.getElementById('donStatusFilter').value;
+            if (statusVal) params.status = statusVal;
+
+            const res = await API.get('/donation/page', params);
+            if (res.code === 200 && res.data) {
+                let records = res.data.records || [];
+                // Client-side type filter
+                if (typeVal === 'crowdfunding') records = records.filter(d => d.crowdfundingId);
+                if (typeVal === 'cat') records = records.filter(d => d.catId && !d.crowdfundingId);
+
+                if (records.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-center">暂无数据</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = records.map(d => {
+                    const type = d.crowdfundingId ? '项目捐献' : (d.catId ? '猫咪打赏' : '捐献');
+                    const typeBadge = d.crowdfundingId ? 'badge-primary' : 'badge-success';
+                    const target = d.crowdfundingTitle || d.catName || '-';
+                    return `<tr>
+                        <td>${d.id}</td>
+                        <td><span class="badge ${typeBadge}">${type}</span></td>
+                        <td>${d.username || d.userId}</td>
+                        <td>${target}</td>
+                        <td style="font-weight:600;color:#e67e22;">¥${(d.amount || 0).toFixed ? d.amount.toFixed(2) : d.amount || 0}</td>
+                        <td>${d.message || '-'}</td>
+                        <td>${d.paymentMethod || '-'}</td>
+                        <td>${d.isAnonymous ? '是' : '否'}</td>
+                        <td><span class="badge ${d.status==='COMPLETED'?'badge-success':d.status==='PENDING'?'badge-warning':'badge-secondary'}">${d.statusText || d.status || '-'}</span></td>
+                        <td>${(d.createTime || '').replace('T', ' ').substring(0, 16)}</td>
+                    </tr>`;
+                }).join('');
+
+                const totalPages = res.data.pages || Math.ceil((res.data.total || 0) / donSize);
+                const pagDiv = document.getElementById('donationPagination');
+                pagDiv.innerHTML = '';
+                if (totalPages > 1) {
+                    for (let i = 1; i <= totalPages; i++) {
+                        pagDiv.innerHTML += `<button class="btn btn-sm ${i===donPage?'btn-primary':'btn-outline'}" onclick="refreshDonations(${i})">${i}</button> `;
+                    }
+                }
+            } else {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center">加载失败</td></tr>';
+            }
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center">加载失败: ${err.message}</td></tr>`;
+        }
+    };
+
+    refreshDonations();
+})();
+</script>

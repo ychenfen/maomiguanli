@@ -56,8 +56,16 @@
                     <span class="nav-item-icon">💬</span>
                     <span>社区动态</span>
                 </a>
-                <a href="#/crowdfunding" class="nav-item">
+                <a href="#/cloud-adoptions" class="nav-item">
+                    <span class="nav-item-icon">☁️</span>
+                    <span>云养管理</span>
+                </a>
+                <a href="#/donations" class="nav-item">
                     <span class="nav-item-icon">💝</span>
+                    <span>捐献管理</span>
+                </a>
+                <a href="#/crowdfunding" class="nav-item">
+                    <span class="nav-item-icon">📦</span>
                     <span>众筹管理</span>
                 </a>
                 <a href="#/notifications" class="nav-item">
@@ -134,6 +142,8 @@
             Router.register('/cat-tags', loadCatTags);
             Router.register('/universities', loadUniversities);
             Router.register('/dynamics', loadDynamics);
+            Router.register('/cloud-adoptions', loadCloudAdoptions);
+            Router.register('/donations', loadDonations);
             Router.register('/crowdfunding', loadCrowdfunding);
             Router.register('/notifications', loadNotifications);
         });
@@ -187,6 +197,16 @@
         function loadDynamics() {
             updateBreadcrumb('社区动态');
             loadPage('pages/dynamics.html');
+        }
+
+        function loadCloudAdoptions() {
+            updateBreadcrumb('云养管理');
+            loadPage('pages/cloud-adoptions.html');
+        }
+
+        function loadDonations() {
+            updateBreadcrumb('捐献管理');
+            loadPage('pages/donations.html');
         }
 
         function loadCrowdfunding() {
