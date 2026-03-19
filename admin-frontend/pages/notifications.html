@@ -11,22 +11,22 @@
         <div class="stat-card">
             <div class="stat-card-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">📤</div>
             <div class="stat-card-content">
-                <div class="stat-card-value" id="sentNotifications">0</div>
-                <div class="stat-card-label">已发送</div>
+                <div class="stat-card-value" id="unreadNotifications">0</div>
+                <div class="stat-card-label">未读通知</div>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">✓</div>
             <div class="stat-card-content">
-                <div class="stat-card-value" id="readNotifications">0</div>
-                <div class="stat-card-label">已读</div>
+                <div class="stat-card-value" id="systemNotifications">0</div>
+                <div class="stat-card-label">系统通知</div>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-card-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">📅</div>
             <div class="stat-card-content">
-                <div class="stat-card-value" id="todayNotifications">0</div>
-                <div class="stat-card-label">今日发送</div>
+                <div class="stat-card-value" id="interactionNotifications">0</div>
+                <div class="stat-card-label">互动通知</div>
             </div>
         </div>
     </div>
@@ -35,13 +35,20 @@
         <div class="card-body">
             <div class="filter-row">
                 <div class="filter-group">
-                    <input type="text" id="searchInput" class="form-control" placeholder="搜索通知标题、内容...">
+                    <input type="text" id="searchInput" class="form-control" placeholder="按标题或内容筛选当前页...">
                     <select id="typeFilter" class="form-control">
                         <option value="">全部类型</option>
                         <option value="SYSTEM">系统通知</option>
                         <option value="ADOPTION">领养通知</option>
                         <option value="VERIFICATION">认证通知</option>
                         <option value="RESCUE">救助通知</option>
+                        <option value="LIKE">点赞通知</option>
+                        <option value="COMMENT">评论通知</option>
+                    </select>
+                    <select id="readFilter" class="form-control">
+                        <option value="">全部状态</option>
+                        <option value="0">未读</option>
+                        <option value="1">已读</option>
                     </select>
                     <button class="btn btn-primary" onclick="window.notificationsPageHandlers.search()">搜索</button>
                     <button class="btn btn-secondary" onclick="window.notificationsPageHandlers.reset()">重置</button>
@@ -118,15 +125,16 @@
                     <textarea id="notificationContent" class="form-control" rows="4" required></textarea>
                 </div>
                 <div class="form-group">
-                    <label>接收者 *</label>
-                    <select id="notificationTarget" class="form-control" required>
-                        <option value="ALL">全体用户</option>
-                        <option value="SPECIFIC">指定用户</option>
+                    <label>优先级</label>
+                    <select id="notificationPriority" class="form-control">
+                        <option value="LOW">低</option>
+                        <option value="MEDIUM" selected>中</option>
+                        <option value="HIGH">高</option>
                     </select>
                 </div>
-                <div class="form-group" id="userIdGroup" style="display: none;">
-                    <label>用户ID</label>
-                    <input type="number" id="notificationUserId" class="form-control">
+                <div class="form-group">
+                    <label>接收用户ID *</label>
+                    <textarea id="notificationUserIds" class="form-control" rows="3" placeholder="请输入用户ID，多个用户用逗号分隔，例如：2,5" required></textarea>
                 </div>
             </form>
         </div>
@@ -144,20 +152,15 @@ window.notificationsPageHandlers = {
     async init() {
         await this.loadStatistics();
         await this.loadNotifications();
-
-        // Setup target change handler
-        document.getElementById('notificationTarget').addEventListener('change', (e) => {
-            document.getElementById('userIdGroup').style.display = e.target.value === 'SPECIFIC' ? 'block' : 'none';
-        });
     },
 
     async loadStatistics() {
         try {
             const stats = await ApiClient.request(API_ENDPOINTS.notifications.statistics);
-            document.getElementById('totalNotifications').textContent = stats.total || 0;
-            document.getElementById('sentNotifications').textContent = stats.sent || 0;
-            document.getElementById('readNotifications').textContent = stats.read || 0;
-            document.getElementById('todayNotifications').textContent = stats.today || 0;
+            document.getElementById('totalNotifications').textContent = stats.totalCount || 0;
+            document.getElementById('unreadNotifications').textContent = stats.unreadCount || 0;
+            document.getElementById('systemNotifications').textContent = stats.systemCount || 0;
+            document.getElementById('interactionNotifications').textContent = Number(stats.likeCount || 0) + Number(stats.commentCount || 0);
         } catch (error) {
             console.error('Load statistics error:', error);
         }
@@ -168,16 +171,23 @@ window.notificationsPageHandlers = {
             Loading.show();
             const params = {
                 page: window.notificationsPageState.currentPage,
-                size: window.notificationsPageState.pageSize,
-                ...window.notificationsPageState.filters
+                size: window.notificationsPageState.pageSize
             };
+
+            if (window.notificationsPageState.filters.type) {
+                params.type = window.notificationsPageState.filters.type;
+            }
+            if (window.notificationsPageState.filters.isRead !== undefined && window.notificationsPageState.filters.isRead !== '') {
+                params.isRead = window.notificationsPageState.filters.isRead;
+            }
 
             const response = await ApiClient.request(API_ENDPOINTS.notifications.list, {
                 method: 'GET',
                 params
             });
 
-            this.renderTable(response.records || []);
+            const records = this.applyLocalFilter(response.records || []);
+            this.renderTable(records);
             this.renderPagination(response.total || 0);
         } catch (error) {
             Toast.error('加载通知列表失败: ' + error.message);
@@ -199,10 +209,10 @@ window.notificationsPageHandlers = {
         tbody.innerHTML = notifications.map(n => `
             <tr>
                 <td>${n.id}</td>
-                <td><span class="badge badge-${this.getTypeColor(n.type)}">${this.getTypeText(n.type)}</span></td>
+                <td><span class="badge badge-${this.getTypeColor(n.type)}">${n.typeText || this.getTypeText(n.type)}</span></td>
                 <td>${n.title || '-'}</td>
-                <td>${n.receiverName || '全体用户'}</td>
-                <td><span class="badge badge-${n.isRead ? 'success' : 'warning'}">${n.isRead ? '已读' : '未读'}</span></td>
+                <td>${n.userId ? `用户#${n.userId}` : '-'}</td>
+                <td><span class="badge badge-${Number(n.isRead) === 1 ? 'success' : 'warning'}">${Number(n.isRead) === 1 ? '已读' : '未读'}</span></td>
                 <td>${Utils.formatDate(n.createTime)}</td>
                 <td>
                     <button class="btn btn-sm btn-info" onclick="window.notificationsPageHandlers.showDetail(${n.id})">详情</button>
@@ -213,37 +223,67 @@ window.notificationsPageHandlers = {
     },
 
     renderPagination(total) {
-        const totalPages = Math.ceil(total / window.notificationsPageState.pageSize);
         const container = document.getElementById('paginationContainer');
-        if (totalPages <= 1) {
-            container.innerHTML = '';
-            return;
-        }
-        container.innerHTML = PaginationComponent.render(
-            window.notificationsPageState.currentPage,
-            totalPages,
+        PaginationComponent.render(container, {
+            current: window.notificationsPageState.currentPage,
             total,
-            (page) => {
+            pageSize: window.notificationsPageState.pageSize,
+            onChange: (page) => {
                 window.notificationsPageState.currentPage = page;
                 this.loadNotifications();
             }
-        );
+        });
     },
 
     getTypeColor(type) {
-        return { 'SYSTEM': 'primary', 'ADOPTION': 'success', 'VERIFICATION': 'info', 'RESCUE': 'warning' }[type] || 'secondary';
+        return {
+            'SYSTEM': 'primary',
+            'ADOPTION': 'success',
+            'VERIFICATION': 'info',
+            'RESCUE': 'warning',
+            'LIKE': 'success',
+            'COMMENT': 'info',
+            'ANNOUNCEMENT': 'primary',
+            'REMINDER': 'warning',
+            'WARNING': 'danger'
+        }[type] || 'secondary';
     },
 
     getTypeText(type) {
-        return { 'SYSTEM': '系统通知', 'ADOPTION': '领养通知', 'VERIFICATION': '认证通知', 'RESCUE': '救助通知' }[type] || type;
+        return {
+            'SYSTEM': '系统通知',
+            'ADOPTION': '领养通知',
+            'VERIFICATION': '认证通知',
+            'RESCUE': '救助通知',
+            'LIKE': '点赞通知',
+            'COMMENT': '评论通知',
+            'ANNOUNCEMENT': '公告',
+            'REMINDER': '提醒',
+            'WARNING': '警告'
+        }[type] || type;
+    },
+
+    applyLocalFilter(notifications) {
+        const keyword = (window.notificationsPageState.filters.keyword || '').toLowerCase();
+        if (!keyword) return notifications;
+
+        return notifications.filter((item) => {
+            const haystack = [item.title, item.content, item.typeText, this.getTypeText(item.type)]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+            return haystack.includes(keyword);
+        });
     },
 
     search() {
         const keyword = document.getElementById('searchInput').value.trim();
         const type = document.getElementById('typeFilter').value;
+        const isRead = document.getElementById('readFilter').value;
         window.notificationsPageState.filters = {};
         if (keyword) window.notificationsPageState.filters.keyword = keyword;
         if (type) window.notificationsPageState.filters.type = type;
+        if (isRead !== '') window.notificationsPageState.filters.isRead = Number(isRead);
         window.notificationsPageState.currentPage = 1;
         this.loadNotifications();
     },
@@ -251,6 +291,7 @@ window.notificationsPageHandlers = {
     reset() {
         document.getElementById('searchInput').value = '';
         document.getElementById('typeFilter').value = '';
+        document.getElementById('readFilter').value = '';
         window.notificationsPageState.filters = {};
         window.notificationsPageState.currentPage = 1;
         this.loadNotifications();
@@ -263,18 +304,19 @@ window.notificationsPageHandlers = {
             document.getElementById('detailContent').innerHTML = `
                 <div class="detail-section">
                     <h4>通知信息</h4>
-                    <div class="detail-row"><span class="detail-label">类型:</span><span class="badge badge-${this.getTypeColor(n.type)}">${this.getTypeText(n.type)}</span></div>
+                    <div class="detail-row"><span class="detail-label">类型:</span><span class="badge badge-${this.getTypeColor(n.type)}">${n.typeText || this.getTypeText(n.type)}</span></div>
                     <div class="detail-row"><span class="detail-label">标题:</span><span class="detail-value">${n.title || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">内容:</span><span class="detail-value">${n.content || '-'}</span></div>
-                    <div class="detail-row"><span class="detail-label">接收者:</span><span class="detail-value">${n.receiverName || '全体用户'}</span></div>
-                    <div class="detail-row"><span class="detail-label">状态:</span><span class="badge badge-${n.isRead ? 'success' : 'warning'}">${n.isRead ? '已读' : '未读'}</span></div>
+                    <div class="detail-row"><span class="detail-label">接收者:</span><span class="detail-value">${n.userId ? `用户#${n.userId}` : '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">优先级:</span><span class="detail-value">${n.priority || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">状态:</span><span class="badge badge-${Number(n.isRead) === 1 ? 'success' : 'warning'}">${Number(n.isRead) === 1 ? '已读' : '未读'}</span></div>
                     <div class="detail-row"><span class="detail-label">发送时间:</span><span class="detail-value">${Utils.formatDate(n.createTime)}</span></div>
                     ${n.readTime ? `<div class="detail-row"><span class="detail-label">读取时间:</span><span class="detail-value">${Utils.formatDate(n.readTime)}</span></div>` : ''}
                 </div>
             `;
             Modal.open('detailModal');
         } catch (error) {
-            Toast.error('加载详情失���: ' + error.message);
+            Toast.error('加载详情失败: ' + error.message);
         } finally {
             Loading.hide();
         }
@@ -282,35 +324,40 @@ window.notificationsPageHandlers = {
 
     showCreateModal() {
         document.getElementById('notificationForm').reset();
-        document.getElementById('userIdGroup').style.display = 'none';
+        document.getElementById('notificationPriority').value = 'MEDIUM';
         Modal.open('createModal');
     },
 
     async sendNotification() {
         const type = document.getElementById('notificationType').value;
+        const priority = document.getElementById('notificationPriority').value;
         const title = document.getElementById('notificationTitle').value.trim();
         const content = document.getElementById('notificationContent').value.trim();
-        const target = document.getElementById('notificationTarget').value;
-        const userId = document.getElementById('notificationUserId').value;
+        const userIds = document.getElementById('notificationUserIds').value
+            .split(',')
+            .map((value) => parseInt(value.trim(), 10))
+            .filter((value) => !Number.isNaN(value));
 
-        if (!type || !title || !content || !target) {
+        if (!type || !title || !content || userIds.length === 0) {
             Toast.warning('请填写所有必填项');
-            return;
-        }
-
-        if (target === 'SPECIFIC' && !userId) {
-            Toast.warning('请输入用户ID');
             return;
         }
 
         try {
             Loading.show();
-            const data = { type, title, content };
-            if (target === 'SPECIFIC') {
-                data.userId = parseInt(userId);
-            }
+            const data = {
+                userId: userIds[0],
+                type,
+                priority,
+                title,
+                content
+            };
 
-            await ApiClient.request(API_ENDPOINTS.notifications.send, {
+            const endpoint = userIds.length === 1
+                ? API_ENDPOINTS.notifications.send
+                : `${API_ENDPOINTS.notifications.sendBatch}?userIds=${userIds.join(',')}`;
+
+            await ApiClient.request(endpoint, {
                 method: 'POST',
                 body: data
             });
@@ -320,7 +367,11 @@ window.notificationsPageHandlers = {
             await this.loadStatistics();
             await this.loadNotifications();
         } catch (error) {
-            Toast.error('发送失败: ' + error.message);
+            if (/系统异常|接收用户ID不能为空/.test(error.message)) {
+                Toast.error('发送失败', '当前部署包后端通知发送接口异常，通知列表可用，但暂不支持后台手动发送。');
+            } else {
+                Toast.error('发送失败: ' + error.message);
+            }
         } finally {
             Loading.hide();
         }

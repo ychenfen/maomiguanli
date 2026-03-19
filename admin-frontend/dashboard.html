@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理后台 - 猫咪救助系统</title>
+    <title>管理后台 - 动物救助系统</title>
     <style>
         * {
             margin: 0;
@@ -154,7 +154,7 @@
 <body>
     <div class="header">
         <div class="header-left">
-            <h1>🐱 猫咪救助系统 - 管理后台</h1>
+            <h1>🐾 动物救助系统 - 管理后台</h1>
         </div>
         <div class="header-right">
             <div class="user-info">
@@ -176,7 +176,7 @@
                     <div class="label">今日新增: <span id="todayUsers">-</span></div>
                 </div>
                 <div class="stat-card green">
-                    <h3>猫咪总数</h3>
+                    <h3>动物总数</h3>
                     <div class="value" id="totalCats">-</div>
                     <div class="label">可领养: <span id="adoptableCats">-</span></div>
                 </div>
@@ -283,7 +283,7 @@
                 document.getElementById('todayUsers').textContent = data.userStatistics.todayNewUsers || 0;
             }
 
-            // 猫咪统计
+            // 动物统计
             if (data.catStatistics) {
                 document.getElementById('totalCats').textContent = data.catStatistics.totalCats || 0;
                 document.getElementById('adoptableCats').textContent = data.catStatistics.adoptableCats || 0;

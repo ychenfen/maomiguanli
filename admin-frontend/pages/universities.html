@@ -112,15 +112,15 @@ window.universitiesPageHandlers = {
             container.innerHTML = '';
             return;
         }
-        container.innerHTML = PaginationComponent.render(
-            window.universitiesPageState.currentPage,
-            totalPages,
+        PaginationComponent.render(container, {
+            current: window.universitiesPageState.currentPage,
             total,
-            (page) => {
+            pageSize: window.universitiesPageState.pageSize,
+            onChange: (page) => {
                 window.universitiesPageState.currentPage = page;
                 this.loadUniversities();
             }
-        );
+        });
     },
 
     showCreateModal() {

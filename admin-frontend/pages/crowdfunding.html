@@ -38,7 +38,7 @@
                     <input type="text" id="searchInput" class="form-control" placeholder="搜索项目标题...">
                     <select id="statusFilter" class="form-control">
                         <option value="">全部状态</option>
-                        <option value="PENDING">待审核</option>
+                        <option value="DRAFT">草稿</option>
                         <option value="ACTIVE">进行中</option>
                         <option value="COMPLETED">已完成</option>
                         <option value="CANCELLED">已取消</option>
@@ -121,11 +121,17 @@ window.crowdfundingPageHandlers = {
 
     async loadStatistics() {
         try {
-            const stats = await ApiClient.request(API_ENDPOINTS.crowdfunding.statistics);
-            document.getElementById('totalProjects').textContent = stats.total || 0;
-            document.getElementById('activeProjects').textContent = stats.active || 0;
-            document.getElementById('completedProjects').textContent = stats.completed || 0;
-            document.getElementById('totalRaised').textContent = Utils.formatCurrency(stats.totalRaised || 0);
+            const statsPage = await ApiClient.request(API_ENDPOINTS.crowdfunding.list, {
+                method: 'GET',
+                params: { page: 1, size: 100 }
+            });
+            const records = statsPage.records || [];
+            document.getElementById('totalProjects').textContent = statsPage.total || records.length;
+            document.getElementById('activeProjects').textContent = records.filter((item) => item.status === 'ACTIVE').length;
+            document.getElementById('completedProjects').textContent = records.filter((item) => item.status === 'COMPLETED').length;
+            document.getElementById('totalRaised').textContent = Utils.formatCurrency(
+                records.reduce((sum, item) => sum + Number(item.currentAmount || 0), 0)
+            );
         } catch (error) {
             console.error('Load statistics error:', error);
         }
@@ -165,13 +171,13 @@ window.crowdfundingPageHandlers = {
         }
 
         tbody.innerHTML = projects.map(p => {
-            const progress = p.targetAmount > 0 ? Math.round((p.raisedAmount / p.targetAmount) * 100) : 0;
+            const progress = p.progress ?? (p.targetAmount > 0 ? Math.round((Number(p.currentAmount || 0) / p.targetAmount) * 100) : 0);
             return `
             <tr>
                 <td>${p.id}</td>
                 <td>${p.title || '-'}</td>
                 <td>${Utils.formatCurrency(p.targetAmount || 0)}</td>
-                <td>${Utils.formatCurrency(p.raisedAmount || 0)}</td>
+                <td>${Utils.formatCurrency(p.currentAmount || 0)}</td>
                 <td>
                     <div style="width: 100px;">
                         <div style="background: #f0f0f0; border-radius: 4px; overflow: hidden;">
@@ -184,9 +190,11 @@ window.crowdfundingPageHandlers = {
                 <td>${Utils.formatDate(p.createTime)}</td>
                 <td>
                     <button class="btn btn-sm btn-info" onclick="window.crowdfundingPageHandlers.showDetail(${p.id})">详情</button>
-                    ${p.status === 'PENDING' ? `
-                        <button class="btn btn-sm btn-success" onclick="window.crowdfundingPageHandlers.showReviewModal(${p.id}, 'approve')">通过</button>
-                        <button class="btn btn-sm btn-danger" onclick="window.crowdfundingPageHandlers.showReviewModal(${p.id}, 'reject')">拒绝</button>
+                    ${p.status === 'DRAFT' ? `
+                        <button class="btn btn-sm btn-success" onclick="window.crowdfundingPageHandlers.showReviewModal(${p.id}, 'activate')">激活</button>
+                    ` : ''}
+                    ${p.status === 'ACTIVE' ? `
+                        <button class="btn btn-sm btn-danger" onclick="window.crowdfundingPageHandlers.showReviewModal(${p.id}, 'cancel')">结束</button>
                     ` : ''}
                 </td>
             </tr>
@@ -200,23 +208,23 @@ window.crowdfundingPageHandlers = {
             container.innerHTML = '';
             return;
         }
-        container.innerHTML = PaginationComponent.render(
-            window.crowdfundingPageState.currentPage,
-            totalPages,
+        PaginationComponent.render(container, {
+            current: window.crowdfundingPageState.currentPage,
             total,
-            (page) => {
+            pageSize: window.crowdfundingPageState.pageSize,
+            onChange: (page) => {
                 window.crowdfundingPageState.currentPage = page;
                 this.loadProjects();
             }
-        );
+        });
     },
 
     getStatusColor(status) {
-        return { 'PENDING': 'warning', 'ACTIVE': 'info', 'COMPLETED': 'success', 'CANCELLED': 'secondary' }[status] || 'secondary';
+        return { 'DRAFT': 'warning', 'ACTIVE': 'info', 'COMPLETED': 'success', 'CANCELLED': 'secondary' }[status] || 'secondary';
     },
 
     getStatusText(status) {
-        return { 'PENDING': '待审核', 'ACTIVE': '进行中', 'COMPLETED': '已完成', 'CANCELLED': '已取消' }[status] || status;
+        return { 'DRAFT': '草稿', 'ACTIVE': '进行中', 'COMPLETED': '已完成', 'CANCELLED': '已取消' }[status] || status;
     },
 
     search() {
@@ -241,14 +249,14 @@ window.crowdfundingPageHandlers = {
         try {
             Loading.show();
             const p = await ApiClient.request(API_ENDPOINTS.crowdfunding.detail(id));
-            const progress = p.targetAmount > 0 ? Math.round((p.raisedAmount / p.targetAmount) * 100) : 0;
+            const progress = p.progress ?? (p.targetAmount > 0 ? Math.round((Number(p.currentAmount || 0) / p.targetAmount) * 100) : 0);
             document.getElementById('detailContent').innerHTML = `
                 <div class="detail-section">
                     <h4>项目信息</h4>
                     <div class="detail-row"><span class="detail-label">标题:</span><span class="detail-value">${p.title || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">描述:</span><span class="detail-value">${p.description || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">目标金额:</span><span class="detail-value">${Utils.formatCurrency(p.targetAmount || 0)}</span></div>
-                    <div class="detail-row"><span class="detail-label">已筹金额:</span><span class="detail-value">${Utils.formatCurrency(p.raisedAmount || 0)}</span></div>
+                    <div class="detail-row"><span class="detail-label">已筹金额:</span><span class="detail-value">${Utils.formatCurrency(p.currentAmount || 0)}</span></div>
                     <div class="detail-row"><span class="detail-label">进度:</span><span class="detail-value">${progress}%</span></div>
                     <div class="detail-row"><span class="detail-label">状态:</span><span class="badge badge-${this.getStatusColor(p.status)}">${this.getStatusText(p.status)}</span></div>
                     <div class="detail-row"><span class="detail-label">创建时间:</span><span class="detail-value">${Utils.formatDate(p.createTime)}</span></div>
@@ -266,7 +274,7 @@ window.crowdfundingPageHandlers = {
     showReviewModal(id, action) {
         document.getElementById('reviewId').value = id;
         document.getElementById('reviewAction').value = action;
-        document.getElementById('reviewTitle').textContent = action === 'approve' ? '通过项目' : '拒绝项目';
+        document.getElementById('reviewTitle').textContent = action === 'activate' ? '激活项目' : '结束项目';
         document.getElementById('reviewComment').value = '';
         Modal.open('reviewModal');
     },
@@ -278,16 +286,15 @@ window.crowdfundingPageHandlers = {
 
         try {
             Loading.show();
-            const endpoint = action === 'approve'
-                ? API_ENDPOINTS.crowdfunding.approve(id)
-                : API_ENDPOINTS.crowdfunding.reject(id);
+            const endpoint = action === 'activate'
+                ? API_ENDPOINTS.crowdfunding.activate(id)
+                : API_ENDPOINTS.crowdfunding.cancel(id);
 
             await ApiClient.request(endpoint, {
-                method: 'POST',
-                body: { comment }
+                method: 'PUT'
             });
 
-            Toast.success(action === 'approve' ? '已通过项目' : '已拒绝项目');
+            Toast.success(action === 'activate' ? '项目已激活' : '项目已结束');
             Modal.close('reviewModal');
             await this.loadStatistics();
             await this.loadProjects();

@@ -42,7 +42,7 @@
     <!-- Popular Cats -->
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">热门猫咪排行</h3>
+            <h3 class="card-title">热门动物排行</h3>
         </div>
         <div class="card-body">
             <div id="popularCats"></div>
@@ -94,212 +94,213 @@
 </div>
 
 <script>
-// Load dashboard data
+const DASHBOARD_HEALTH_LABELS = {
+    overall: '总体状态',
+    database: '数据库',
+    cache: '缓存',
+    storage: '存储',
+    services: '服务',
+    network: '网络',
+    lastCheck: '最近检查'
+};
+
+const DASHBOARD_TASK_LABELS = {
+    total: '合计任务',
+    verificationApplications: '认证申请',
+    adoptionApplications: '领养申请',
+    rescueRequests: '救助请求',
+    financialApprovals: '财务审批',
+    reportReviews: '待审核举报'
+};
+
 async function loadDashboardData() {
-    try {
-        // Load statistics
-        const statsResult = await ApiClient.get(API.dashboard.statistics);
-        if (statsResult.code === 200) {
-            displayStatistics(statsResult.data);
-        }
+    const tasks = [
+        loadStatistics(),
+        loadUserGrowth(7),
+        loadActivityStats(7),
+        loadPopularCats(),
+        loadActiveUsers(),
+        loadSystemHealth(),
+        loadPendingTasks(),
+        loadRecentActivities()
+    ];
 
-        // Load charts
-        loadUserGrowth(7);
-        loadActivityStats(7);
-
-        // Load rankings
-        loadPopularCats();
-        loadActiveUsers();
-
-        // Load system health
-        loadSystemHealth();
-
-        // Load pending tasks
-        loadPendingTasks();
-
-        // Load recent activities
-        loadRecentActivities();
-    } catch (error) {
-        console.error('Load dashboard error:', error);
+    const results = await Promise.allSettled(tasks);
+    if (results.every(result => result.status === 'rejected')) {
         Toast.error('加载失败', '无法加载仪表板数据');
     }
 }
 
-// Display statistics cards
+async function loadStatistics() {
+    try {
+        const statistics = await ApiClient.get(API.dashboard.statistics);
+        displayStatistics(statistics || {});
+    } catch (error) {
+        console.error('Load dashboard statistics error:', error);
+        displayStatistics({});
+        throw error;
+    }
+}
+
 function displayStatistics(data) {
-    const stats = [];
+    const userStats = data.userStatistics || {};
+    const catStats = data.catStatistics || {};
+    const contentStats = data.contentStatistics || {};
+    const verificationStats = data.verificationStatistics || {};
+    const financeStats = data.financialStatistics || {};
 
-    // User statistics
-    if (data.userStatistics) {
-        stats.push({
+    const stats = [
+        {
             title: '用户总数',
-            value: data.userStatistics.totalUsers || 0,
-            label: `今日新增: ${data.userStatistics.todayNewUsers || 0}`,
+            value: userStats.totalUsers || 0,
+            label: `今日新增: ${userStats.todayNewUsers || 0} · 活跃用户: ${userStats.activeUsers || 0}`,
             color: 'blue'
-        });
-    }
-
-    // Cat statistics
-    if (data.catStatistics) {
-        stats.push({
-            title: '猫咪总数',
-            value: data.catStatistics.totalCats || 0,
-            label: `可领养: ${data.catStatistics.adoptableCats || 0}`,
-            color: 'green'
-        });
-    }
-
-    // Content statistics
-    if (data.contentStatistics) {
-        stats.push({
-            title: '社区动态',
-            value: data.contentStatistics.totalDynamics || 0,
-            label: `今日发布: ${data.contentStatistics.todayDynamics || 0}`,
+        },
+        {
+            title: '已认证用户',
+            value: userStats.verifiedUsers || 0,
+            label: `认证率: ${formatPercent(userStats.verificationRate)}`,
             color: 'orange'
-        });
-    }
-
-    // Verification statistics
-    if (data.verificationStatistics) {
-        stats.push({
+        },
+        {
+            title: '动物总数',
+            value: catStats.totalCats || 0,
+            label: `可领养: ${catStats.adoptableCats || 0} · 已领养: ${catStats.adoptedCats || 0}`,
+            color: 'green'
+        },
+        {
+            title: '社区互动',
+            value: contentStats.totalDynamics || 0,
+            label: `点赞: ${contentStats.totalLikes || 0} · 评论: ${contentStats.totalComments || 0}`,
+            color: 'orange'
+        },
+        {
             title: '待审核申请',
-            value: data.verificationStatistics.pendingApplications || 0,
-            label: '身份认证申请',
+            value: verificationStats.pendingApplications || 0,
+            label: `总申请: ${verificationStats.totalApplications || 0} · 通过率: ${formatPercent(verificationStats.approvalRate)}`,
             color: 'red'
-        });
-    }
-
-    // Financial statistics
-    if (data.financialStatistics) {
-        stats.push({
-            title: '总收入',
-            value: Utils.formatCurrency(data.financialStatistics.totalIncome),
-            label: `本月: ${Utils.formatCurrency(data.financialStatistics.monthIncome)}`
-        });
-
-        stats.push({
-            title: '总支出',
-            value: Utils.formatCurrency(data.financialStatistics.totalExpense),
-            label: `本月: ${Utils.formatCurrency(data.financialStatistics.monthExpense)}`
-        });
-
-        stats.push({
+        },
+        {
             title: '当前余额',
-            value: Utils.formatCurrency(data.financialStatistics.currentBalance),
-            label: `待处理: ${data.financialStatistics.pendingTransactions || 0}`
-        });
-    }
+            value: Utils.formatCurrency(financeStats.currentBalance || 0),
+            label: `本月收入: ${Utils.formatCurrency(financeStats.monthIncome || 0)} · 支出: ${Utils.formatCurrency(financeStats.monthExpense || 0)}`,
+            color: 'green'
+        }
+    ];
 
     StatsCardComponent.render(document.getElementById('statsCards'), stats);
 }
 
-// Load user growth chart
 async function loadUserGrowth(days) {
     try {
-        const result = await ApiClient.get(API.dashboard.userGrowth, { days });
-        if (result.code === 200 && result.data) {
-            renderLineChart('userGrowthChart', result.data, 'date', 'count', '用户数');
-        }
+        const data = await ApiClient.get(API.dashboard.userGrowth, { days });
+        renderLineChart('userGrowthChart', Array.isArray(data) ? data : [], 'date', 'newUsers');
     } catch (error) {
         console.error('Load user growth error:', error);
+        throw error;
     }
 }
 
-// Load activity statistics chart
 async function loadActivityStats(days) {
     try {
-        const result = await ApiClient.get(API.dashboard.activityStats, { days });
-        if (result.code === 200 && result.data) {
-            renderLineChart('activityChart', result.data, 'date', 'count', '活跃度');
-        }
+        const data = await ApiClient.get(API.dashboard.activityStats, { days });
+        const chartData = Array.isArray(data)
+            ? data.map(item => ({
+                ...item,
+                totalActivity: (item.adoptions || 0) + (item.dynamics || 0) + (item.comments || 0) + (item.likes || 0)
+            }))
+            : [];
+        renderLineChart('activityChart', chartData, 'date', 'totalActivity');
     } catch (error) {
         console.error('Load activity stats error:', error);
+        throw error;
     }
 }
 
-// Load popular cats
 async function loadPopularCats() {
     try {
-        const result = await ApiClient.get(API.dashboard.popularCats, { limit: 10 });
-        if (result.code === 200 && result.data) {
-            renderRanking('popularCats', result.data, 'name', 'viewCount', '浏览量');
-        }
+        const data = await ApiClient.get(API.dashboard.popularCats, { limit: 5 });
+        const ranking = Array.isArray(data)
+            ? data.map(item => ({
+                displayName: item.name || `动物#${item.id}`,
+                displayValue: item.viewCount || 0
+            })).sort((a, b) => b.displayValue - a.displayValue)
+            : [];
+        renderRanking('popularCats', ranking, 'displayName', 'displayValue', '浏览量');
     } catch (error) {
         console.error('Load popular cats error:', error);
+        throw error;
     }
 }
 
-// Load active users
 async function loadActiveUsers() {
     try {
-        const result = await ApiClient.get(API.dashboard.activeUsers, { limit: 10 });
-        if (result.code === 200 && result.data) {
-            renderRanking('activeUsers', result.data, 'username', 'activityScore', '活跃度');
-        }
+        const data = await ApiClient.get(API.dashboard.activeUsers, { limit: 5 });
+        const ranking = Array.isArray(data)
+            ? data.map(item => ({
+                displayName: item.realName || item.username || `用户#${item.id}`,
+                displayValue: item.score || 0
+            })).sort((a, b) => b.displayValue - a.displayValue)
+            : [];
+        renderRanking('activeUsers', ranking, 'displayName', 'displayValue', '活跃分');
     } catch (error) {
         console.error('Load active users error:', error);
+        throw error;
     }
 }
 
-// Load system health
 async function loadSystemHealth() {
     try {
-        const result = await ApiClient.get(API.dashboard.systemHealth);
-        if (result.code === 200 && result.data) {
-            renderSystemHealth(result.data);
-        }
+        const data = await ApiClient.get(API.dashboard.systemHealth);
+        renderSystemHealth(data || {});
     } catch (error) {
         console.error('Load system health error:', error);
+        throw error;
     }
 }
 
-// Load pending tasks
 async function loadPendingTasks() {
     try {
-        const result = await ApiClient.get(API.dashboard.pendingTasks);
-        if (result.code === 200 && result.data) {
-            renderPendingTasks(result.data);
-        }
+        const data = await ApiClient.get(API.dashboard.pendingTasks);
+        renderPendingTasks(data || {});
     } catch (error) {
         console.error('Load pending tasks error:', error);
+        throw error;
     }
 }
 
-// Load recent activities
 async function loadRecentActivities() {
     try {
-        const result = await ApiClient.get(API.dashboard.recentActivities, { limit: 20 });
-        if (result.code === 200 && result.data) {
-            renderRecentActivities(result.data);
-        }
+        const data = await ApiClient.get(API.dashboard.recentActivities, { limit: 10 });
+        renderRecentActivities(Array.isArray(data) ? data : []);
     } catch (error) {
         console.error('Load recent activities error:', error);
+        throw error;
     }
 }
 
-// Render line chart (simple canvas-based chart)
-function renderLineChart(canvasId, data, xKey, yKey, label) {
+function renderLineChart(canvasId, data, xKey, yKey) {
     const canvas = document.getElementById(canvasId);
-    if (!canvas || !data || data.length === 0) return;
+    if (!canvas || !Array.isArray(data) || data.length === 0) {
+        return;
+    }
 
     const ctx = canvas.getContext('2d');
     const width = canvas.width = canvas.offsetWidth;
     const height = canvas.height = 300;
 
-    // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Extract data
-    const labels = data.map(d => d[xKey]);
-    const values = data.map(d => d[yKey]);
-    const maxValue = Math.max(...values);
-
-    // Chart dimensions
+    const labels = data.map(item => item[xKey]);
+    const values = data.map(item => Number(item[yKey]) || 0);
+    const maxValue = Math.max(...values, 1);
     const padding = 40;
     const chartWidth = width - padding * 2;
     const chartHeight = height - padding * 2;
+    const getX = (index) => values.length === 1
+        ? padding + chartWidth / 2
+        : padding + (chartWidth / (values.length - 1)) * index;
 
-    // Draw axes
     ctx.strokeStyle = '#dcdfe6';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -308,15 +309,13 @@ function renderLineChart(canvasId, data, xKey, yKey, label) {
     ctx.lineTo(width - padding, height - padding);
     ctx.stroke();
 
-    // Draw line
     ctx.strokeStyle = '#667eea';
     ctx.lineWidth = 2;
     ctx.beginPath();
 
     values.forEach((value, index) => {
-        const x = padding + (chartWidth / (values.length - 1)) * index;
+        const x = getX(index);
         const y = height - padding - (value / maxValue) * chartHeight;
-
         if (index === 0) {
             ctx.moveTo(x, y);
         } else {
@@ -326,30 +325,54 @@ function renderLineChart(canvasId, data, xKey, yKey, label) {
 
     ctx.stroke();
 
-    // Draw points
     ctx.fillStyle = '#667eea';
     values.forEach((value, index) => {
-        const x = padding + (chartWidth / (values.length - 1)) * index;
+        const x = getX(index);
         const y = height - padding - (value / maxValue) * chartHeight;
         ctx.beginPath();
         ctx.arc(x, y, 4, 0, Math.PI * 2);
         ctx.fill();
     });
 
-    // Draw labels
+    const labelInterval = Math.max(1, Math.ceil(labels.length / 6));
     ctx.fillStyle = '#666';
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
     labels.forEach((label, index) => {
-        const x = padding + (chartWidth / (labels.length - 1)) * index;
-        ctx.fillText(label, x, height - padding + 20);
+        if (index % labelInterval !== 0 && index !== labels.length - 1) {
+            return;
+        }
+        ctx.fillText(label, getX(index), height - padding + 20);
     });
+}
+
+function formatPercent(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+        return '0%';
+    }
+    const normalized = numeric > 1 ? numeric : numeric * 100;
+    return `${normalized.toFixed(normalized % 1 === 0 ? 0 : 1)}%`;
+}
+
+function getHealthStatusMeta(status) {
+    const normalized = String(status ?? '').toLowerCase();
+    if (['healthy', 'up', 'ok', 'true', 'normal'].includes(normalized)) {
+        return { color: 'var(--success)', text: '正常' };
+    }
+    if (['warning', 'degraded'].includes(normalized)) {
+        return { color: 'var(--warning)', text: '注意' };
+    }
+    return { color: 'var(--danger)', text: '异常' };
 }
 
 // Render ranking list
 function renderRanking(containerId, data, nameKey, valueKey, valueLabel) {
     const container = document.getElementById(containerId);
-    if (!container || !data || data.length === 0) {
+    if (!container) {
+        return;
+    }
+    if (!data || data.length === 0) {
         container.innerHTML = '<div class="empty-state"><div class="empty-state-text">暂无数据</div></div>';
         return;
     }
@@ -384,18 +407,36 @@ function renderSystemHealth(data) {
     const container = document.getElementById('systemHealth');
     if (!container || !data) return;
 
+    const keys = ['overall', 'database', 'cache', 'storage', 'services', 'network', 'lastCheck']
+        .filter(key => data[key] !== undefined && data[key] !== null && data[key] !== '');
+
+    if (keys.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-text">暂无系统状态</div></div>';
+        return;
+    }
+
     let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
 
-    Object.keys(data).forEach(key => {
+    keys.forEach(key => {
         const status = data[key];
-        const isHealthy = status === 'healthy' || status === true || status === 'UP';
-        const statusColor = isHealthy ? 'var(--success)' : 'var(--danger)';
-        const statusText = isHealthy ? '正常' : '异常';
+        const label = DASHBOARD_HEALTH_LABELS[key] || key;
+
+        if (key === 'lastCheck') {
+            html += `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px; background: var(--bg-primary); border-radius: 6px;">
+                    <div style="font-size: 14px; color: var(--text-primary);">${label}</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">${Utils.formatDate(status)}</div>
+                </div>
+            `;
+            return;
+        }
+
+        const statusMeta = getHealthStatusMeta(status);
 
         html += `
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px; background: var(--bg-primary); border-radius: 6px;">
-                <div style="font-size: 14px; color: var(--text-primary);">${key}</div>
-                <div style="font-size: 14px; color: ${statusColor}; font-weight: 500;">● ${statusText}</div>
+                <div style="font-size: 14px; color: var(--text-primary);">${label}</div>
+                <div style="font-size: 14px; color: ${statusMeta.color}; font-weight: 500;">● ${statusMeta.text}</div>
             </div>
         `;
     });
@@ -409,15 +450,23 @@ function renderPendingTasks(data) {
     const container = document.getElementById('pendingTasks');
     if (!container || !data) return;
 
+    const keys = ['total', 'verificationApplications', 'adoptionApplications', 'rescueRequests', 'financialApprovals', 'reportReviews']
+        .filter(key => data[key] !== undefined && data[key] !== null);
+
+    if (keys.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-text">暂无待处理任务</div></div>';
+        return;
+    }
+
     let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
 
-    Object.keys(data).forEach(key => {
+    keys.forEach(key => {
         const count = data[key];
         const badgeClass = count > 0 ? 'badge-danger' : 'badge-success';
 
         html += `
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px; background: var(--bg-primary); border-radius: 6px;">
-                <div style="font-size: 14px; color: var(--text-primary);">${key}</div>
+                <div style="font-size: 14px; color: var(--text-primary);">${DASHBOARD_TASK_LABELS[key] || key}</div>
                 <span class="badge ${badgeClass}">${count}</span>
             </div>
         `;
@@ -430,7 +479,10 @@ function renderPendingTasks(data) {
 // Render recent activities
 function renderRecentActivities(data) {
     const container = document.getElementById('recentActivities');
-    if (!container || !data || data.length === 0) {
+    if (!container) {
+        return;
+    }
+    if (!data || data.length === 0) {
         container.innerHTML = '<div class="empty-state"><div class="empty-state-text">暂无动态</div></div>';
         return;
     }
@@ -438,15 +490,17 @@ function renderRecentActivities(data) {
     let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
 
     data.forEach(activity => {
+        const actor = activity.user || '系统';
+        const description = activity.description || activity.type || '系统操作';
         html += `
             <div style="display: flex; align-items: start; gap: 12px; padding: 12px; background: var(--bg-primary); border-radius: 6px;">
                 <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary-start); margin-top: 6px;"></div>
                 <div style="flex: 1;">
                     <div style="font-size: 14px; color: var(--text-primary); margin-bottom: 4px;">
-                        ${activity.description || activity.content}
+                        ${actor} · ${description}
                     </div>
                     <div style="font-size: 12px; color: var(--text-tertiary);">
-                        ${Utils.formatDate(activity.createdAt || activity.createTime)}
+                        ${Utils.formatDate(activity.timestamp || activity.createdAt || activity.createTime)}
                     </div>
                 </div>
             </div>

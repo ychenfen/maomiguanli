@@ -129,10 +129,10 @@ window.verificationPageHandlers = {
     async loadStatistics() {
         try {
             const stats = await ApiClient.request(API_ENDPOINTS.verifications.statistics);
-            document.getElementById('totalVerifications').textContent = stats.total || 0;
-            document.getElementById('pendingVerifications').textContent = stats.pending || 0;
-            document.getElementById('approvedVerifications').textContent = stats.approved || 0;
-            document.getElementById('rejectedVerifications').textContent = stats.rejected || 0;
+            document.getElementById('totalVerifications').textContent = stats.totalApplications || 0;
+            document.getElementById('pendingVerifications').textContent = stats.pendingCount || 0;
+            document.getElementById('approvedVerifications').textContent = stats.approvedCount || 0;
+            document.getElementById('rejectedVerifications').textContent = stats.rejectedCount || 0;
         } catch (error) {
             console.error('Load statistics error:', error);
         }
@@ -201,15 +201,15 @@ window.verificationPageHandlers = {
             container.innerHTML = '';
             return;
         }
-        container.innerHTML = PaginationComponent.render(
-            window.verificationPageState.currentPage,
-            totalPages,
+        PaginationComponent.render(container, {
+            current: window.verificationPageState.currentPage,
             total,
-            (page) => {
+            pageSize: window.verificationPageState.pageSize,
+            onChange: (page) => {
                 window.verificationPageState.currentPage = page;
                 this.loadVerifications();
             }
-        );
+        });
     },
 
     getStatusColor(status) {
@@ -250,9 +250,10 @@ window.verificationPageHandlers = {
                     <div class="detail-row"><span class="detail-label">身份证号:</span><span class="detail-value">${v.idCard || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">状态:</span><span class="badge badge-${this.getStatusColor(v.status)}">${this.getStatusText(v.status)}</span></div>
                     <div class="detail-row"><span class="detail-label">申请时间:</span><span class="detail-value">${Utils.formatDate(v.createTime)}</span></div>
-                    ${v.reviewComment ? `<div class="detail-row"><span class="detail-label">审核意见:</span><span class="detail-value">${v.reviewComment}</span></div>` : ''}
-                    ${v.idCardFrontUrl ? `<div class="detail-row"><span class="detail-label">身份证正面:</span><img src="${v.idCardFrontUrl}" style="max-width: 300px; margin-top: 10px;"></div>` : ''}
-                    ${v.idCardBackUrl ? `<div class="detail-row"><span class="detail-label">身份证反面:</span><img src="${v.idCardBackUrl}" style="max-width: 300px; margin-top: 10px;"></div>` : ''}
+                    ${v.rejectReason ? `<div class="detail-row"><span class="detail-label">拒绝原因:</span><span class="detail-value">${v.rejectReason}</span></div>` : ''}
+                    ${v.idCardFront ? `<div class="detail-row"><span class="detail-label">身份证正面:</span><img src="${v.idCardFront}" style="max-width: 300px; margin-top: 10px;"></div>` : ''}
+                    ${v.idCardBack ? `<div class="detail-row"><span class="detail-label">身份证反面:</span><img src="${v.idCardBack}" style="max-width: 300px; margin-top: 10px;"></div>` : ''}
+                    ${v.studentCard ? `<div class="detail-row"><span class="detail-label">学生证:</span><img src="${v.studentCard}" style="max-width: 300px; margin-top: 10px;"></div>` : ''}
                 </div>
             `;
             Modal.open('detailModal');
@@ -278,13 +279,13 @@ window.verificationPageHandlers = {
 
         try {
             Loading.show();
-            const endpoint = action === 'approve'
-                ? API_ENDPOINTS.verifications.approve(id)
-                : API_ENDPOINTS.verifications.reject(id);
-
-            await ApiClient.request(endpoint, {
-                method: 'POST',
-                body: { comment }
+            await ApiClient.request(API_ENDPOINTS.verifications.review, {
+                method: 'PUT',
+                body: {
+                    id: Number(id),
+                    status: action === 'approve' ? 'APPROVED' : 'REJECTED',
+                    rejectReason: action === 'reject' ? comment : ''
+                }
             });
 
             Toast.success(action === 'approve' ? '已通过认证' : '已拒绝认证');

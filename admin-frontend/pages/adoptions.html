@@ -37,7 +37,7 @@
         <div class="card-body">
             <div class="filter-row">
                 <div class="filter-group">
-                    <input type="text" id="searchInput" class="form-control" placeholder="搜索申请人、猫咪名称...">
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索申请人、动物名称...">
                     <select id="statusFilter" class="form-control">
                         <option value="">全部状态</option>
                         <option value="PENDING">待审核</option>
@@ -61,7 +61,7 @@
                         <tr>
                             <th>ID</th>
                             <th>申请人</th>
-                            <th>猫��</th>
+                            <th>动物</th>
                             <th>联系方式</th>
                             <th>状态</th>
                             <th>申请时间</th>
@@ -136,10 +136,10 @@ window.adoptionPageHandlers = {
     async loadStatistics() {
         try {
             const stats = await ApiClient.request(API_ENDPOINTS.adoptions.statistics);
-            document.getElementById('totalAdoptions').textContent = stats.total || 0;
-            document.getElementById('pendingAdoptions').textContent = stats.pending || 0;
-            document.getElementById('approvedAdoptions').textContent = stats.approved || 0;
-            document.getElementById('rejectedAdoptions').textContent = stats.rejected || 0;
+            document.getElementById('totalAdoptions').textContent = stats.totalApplications || 0;
+            document.getElementById('pendingAdoptions').textContent = stats.pendingApplications || 0;
+            document.getElementById('approvedAdoptions').textContent = stats.approvedApplications || 0;
+            document.getElementById('rejectedAdoptions').textContent = stats.rejectedApplications || 0;
         } catch (error) {
             console.error('Load statistics error:', error);
         }
@@ -181,7 +181,7 @@ window.adoptionPageHandlers = {
         tbody.innerHTML = adoptions.map(adoption => `
             <tr>
                 <td>${adoption.id}</td>
-                <td>${adoption.applicantName || '-'}</td>
+                <td>${adoption.realName || adoption.username || '-'}</td>
                 <td>${adoption.catName || '-'}</td>
                 <td>${adoption.contactPhone || '-'}</td>
                 <td>
@@ -210,15 +210,15 @@ window.adoptionPageHandlers = {
             return;
         }
 
-        container.innerHTML = PaginationComponent.render(
-            window.adoptionPageState.currentPage,
-            totalPages,
+        PaginationComponent.render(container, {
+            current: window.adoptionPageState.currentPage,
             total,
-            (page) => {
+            pageSize: window.adoptionPageState.pageSize,
+            onChange: (page) => {
                 window.adoptionPageState.currentPage = page;
                 this.loadAdoptions();
             }
-        );
+        });
     },
 
     getStatusColor(status) {
@@ -275,10 +275,10 @@ window.adoptionPageHandlers = {
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">申请人:</span>
-                        <span class="detail-value">${adoption.applicantName || '-'}</span>
+                        <span class="detail-value">${adoption.realName || adoption.username || '-'}</span>
                     </div>
                     <div class="detail-row">
-                        <span class="detail-label">猫咪:</span>
+                        <span class="detail-label">动物:</span>
                         <span class="detail-value">${adoption.catName || '-'}</span>
                     </div>
                     <div class="detail-row">
@@ -303,10 +303,10 @@ window.adoptionPageHandlers = {
                         <span class="detail-label">申请时间:</span>
                         <span class="detail-value">${Utils.formatDate(adoption.createTime)}</span>
                     </div>
-                    ${adoption.reviewComment ? `
+                    ${adoption.rejectReason ? `
                         <div class="detail-row">
-                            <span class="detail-label">审核意见:</span>
-                            <span class="detail-value">${adoption.reviewComment}</span>
+                            <span class="detail-label">拒绝原因:</span>
+                            <span class="detail-value">${adoption.rejectReason}</span>
                         </div>
                     ` : ''}
                 </div>
@@ -333,20 +333,16 @@ window.adoptionPageHandlers = {
         const action = document.getElementById('reviewAction').value;
         const comment = document.getElementById('reviewComment').value.trim();
 
-        if (!comment) {
-            Toast.warning('请输入审核意见');
+        if (action === 'reject' && !comment) {
+            Toast.warning('请输入拒绝原因');
             return;
         }
 
         try {
             Loading.show();
-            const endpoint = action === 'approve'
-                ? API_ENDPOINTS.adoptions.approve(id)
-                : API_ENDPOINTS.adoptions.reject(id);
-
-            await ApiClient.request(endpoint, {
-                method: 'POST',
-                body: { comment }
+            const status = action === 'approve' ? 'APPROVED' : 'REJECTED';
+            await ApiClient.request(API_ENDPOINTS.adoptions.review(id, status, comment), {
+                method: 'POST'
             });
 
             Toast.success(action === 'approve' ? '已通过申请' : '已拒绝申请');

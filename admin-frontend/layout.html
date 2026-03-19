@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理后台 - 猫咪救助系统</title>
-    <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
+    <title>管理后台 - 动物救助系统</title>
+    <link rel="stylesheet" href="css/common.css?v=20260318001">
+    <link rel="stylesheet" href="css/layout.css?v=20260318001">
+    <link rel="stylesheet" href="css/components.css?v=20260318001">
 </head>
 <body>
     <div class="admin-layout">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h1>🐱 猫咪救助系统</h1>
+                <h1>🐾 动物救助系统</h1>
             </div>
             <nav class="sidebar-nav">
                 <a href="#/" class="nav-item active">
@@ -26,7 +26,7 @@
                 </a>
                 <a href="#/cats" class="nav-item">
                     <span class="nav-item-icon">🐱</span>
-                    <span>猫咪管理</span>
+                    <span>动物管理</span>
                 </a>
                 <a href="#/adoptions" class="nav-item">
                     <span class="nav-item-icon">📝</span>
@@ -46,7 +46,7 @@
                 </a>
                 <a href="#/cat-tags" class="nav-item">
                     <span class="nav-item-icon">🏷️</span>
-                    <span>猫咪标签</span>
+                    <span>动物标签</span>
                 </a>
                 <a href="#/universities" class="nav-item">
                     <span class="nav-item-icon">🏫</span>
@@ -94,10 +94,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="config.js"></script>
-    <script src="js/api.js?v=20260207002"></script>
-    <script src="js/common.js?v=20260207002"></script>
-    <script src="js/components.js?v=20260207002"></script>
+    <script src="config.js?v=20260318001"></script>
+    <script src="js/api.js?v=20260318001"></script>
+    <script src="js/common.js?v=20260318001"></script>
+    <script src="js/components.js?v=20260318001"></script>
     <script>
         // Initialize app
         document.addEventListener('DOMContentLoaded', () => {
@@ -120,9 +120,6 @@
                 mainContent.classList.toggle('expanded');
             });
 
-            // Initialize router
-            Router.init();
-
             // Register routes
             Router.register('/', loadDashboard);
             Router.register('/users', loadUsers);
@@ -136,6 +133,9 @@
             Router.register('/dynamics', loadDynamics);
             Router.register('/crowdfunding', loadCrowdfunding);
             Router.register('/notifications', loadNotifications);
+
+            // Initialize router after route registration so deep links load correctly.
+            Router.init();
         });
 
         // Route handlers - will load content from pages
@@ -150,7 +150,7 @@
         }
 
         function loadCats() {
-            updateBreadcrumb('猫咪管理');
+            updateBreadcrumb('动物管理');
             loadPage('pages/cats.html');
         }
 
@@ -175,7 +175,7 @@
         }
 
         function loadCatTags() {
-            updateBreadcrumb('猫咪标签');
+            updateBreadcrumb('动物标签');
             loadPage('pages/cat-tags.html');
         }
 
@@ -212,7 +212,8 @@
             Loading.show();
 
             try {
-                const response = await fetch(url);
+                const versionedUrl = `${url}${url.includes('?') ? '&' : '?'}v=20260319002`;
+                const response = await fetch(versionedUrl, { cache: 'no-store' });
                 if (response.ok) {
                     const html = await response.text();
                     contentArea.innerHTML = html;

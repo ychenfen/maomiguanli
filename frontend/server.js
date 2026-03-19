@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 5000;
+const PORT = Number.parseInt(process.env.PORT || '5000', 10);
 const API_HOST = process.env.API_HOST || '127.0.0.1';
 const API_PORT = Number.parseInt(process.env.API_PORT || '8080', 10);
 
@@ -25,13 +25,17 @@ const server = http.createServer((req, res) => {
   let pathname = req.url.split('?')[0];
 
   // API 代理
-  if (pathname.startsWith('/api/')) {
+  if (pathname.startsWith('/api/') || pathname.startsWith('/uploads/')) {
+    const proxyHeaders = { ...req.headers, host: `${API_HOST}:${API_PORT}` };
+    delete proxyHeaders.origin;
+    delete proxyHeaders.referer;
+
     const options = {
       hostname: API_HOST,
       port: API_PORT,
       path: req.url,
       method: req.method,
-      headers: { ...req.headers, host: `${API_HOST}:${API_PORT}` }
+      headers: proxyHeaders
     };
 
     const proxyReq = http.request(options, (proxyRes) => {

@@ -46,67 +46,73 @@ const API = {
         update: (id) => `${API_BASE}/cats/${id}`,
         delete: (id) => `${API_BASE}/cats/${id}`,
         updateStatus: (id) => `${API_BASE}/cats/${id}/status`,
-        statistics: `${API_BASE}/cats/statistics`
+        statistics: `${API_BASE}/cats/stats`
     },
 
     // Adoption Management
     adoptions: {
-        list: `${API_BASE}/adoptions/page`,
-        detail: (id) => `${API_BASE}/adoptions/${id}`,
-        approve: (id) => `${API_BASE}/adoptions/${id}/approve`,
-        reject: (id) => `${API_BASE}/adoptions/${id}/reject`,
-        statistics: `${API_BASE}/adoptions/statistics`
+        list: `${API_BASE}/adoption-applications/page`,
+        detail: (id) => `${API_BASE}/adoption-applications/${id}`,
+        review: (id, status, rejectReason = '') => {
+            const params = new URLSearchParams({ status });
+            if (rejectReason) params.set('rejectReason', rejectReason);
+            return `${API_BASE}/adoption-applications/${id}/review?${params.toString()}`;
+        },
+        statistics: `${API_BASE}/adoption-applications/statistics`
     },
 
     // Verification Management
     verifications: {
-        list: `${API_BASE}/verifications/page`,
-        detail: (id) => `${API_BASE}/verifications/${id}`,
-        approve: (id) => `${API_BASE}/verifications/${id}/approve`,
-        reject: (id) => `${API_BASE}/verifications/${id}/reject`,
-        batchApprove: `${API_BASE}/verifications/batch-approve`,
-        statistics: `${API_BASE}/verifications/statistics`
+        list: `${API_BASE}/verification/page`,
+        detail: (id) => `${API_BASE}/verification/${id}`,
+        review: `${API_BASE}/verification/review`,
+        statistics: `${API_BASE}/verification/enhanced/statistics`
     },
 
     // Rescue Management
     rescues: {
-        list: `${API_BASE}/rescues/page`,
-        detail: (id) => `${API_BASE}/rescues/${id}`,
-        create: `${API_BASE}/rescues`,
-        update: (id) => `${API_BASE}/rescues/${id}`,
-        delete: (id) => `${API_BASE}/rescues/${id}`,
-        updateStatus: (id) => `${API_BASE}/rescues/${id}/status`,
-        assign: (id) => `${API_BASE}/rescues/${id}/assign`,
-        statistics: `${API_BASE}/rescues/statistics`
+        list: `${API_BASE}/rescue-info/page`,
+        detail: (id) => `${API_BASE}/rescue-info/${id}`,
+        create: `${API_BASE}/rescue-info`,
+        delete: (id) => `${API_BASE}/rescue-info/${id}`,
+        respond: (id) => `${API_BASE}/rescue-info/${id}/respond`,
+        close: (id, resolveNote = '') => {
+            const params = new URLSearchParams();
+            if (resolveNote) params.set('resolveNote', resolveNote);
+            const query = params.toString();
+            return `${API_BASE}/rescue-info/${id}/close${query ? `?${query}` : ''}`;
+        },
+        statistics: `${API_BASE}/rescue-info/statistics`
     },
 
     // Finance Management
     finance: {
-        list: `${API_BASE}/finance/transactions/page`,
-        detail: (id) => `${API_BASE}/finance/transactions/${id}`,
-        approve: (id) => `${API_BASE}/finance/transactions/${id}/approve`,
-        reject: (id) => `${API_BASE}/finance/transactions/${id}/reject`,
-        statistics: `${API_BASE}/finance/statistics`,
+        list: `${API_BASE}/finance/page`,
+        detail: (id) => `${API_BASE}/finance/${id}`,
+        approve: (id, status = 'APPROVED') => `${API_BASE}/finance/${id}/approve?status=${encodeURIComponent(status)}`,
+        reject: (id) => `${API_BASE}/finance/${id}/approve?status=REJECTED`,
+        statistics: `${API_BASE}/finance/stats`,
         report: `${API_BASE}/finance/report`,
         export: `${API_BASE}/finance/export`
     },
 
     // Cat Tag Management
     catTags: {
-        list: `${API_BASE}/cat-tags/page`,
-        detail: (id) => `${API_BASE}/cat-tags/${id}`,
+        list: `${API_BASE}/cat-tags`,
+        byType: (type) => `${API_BASE}/cat-tags/type/${type}`,
         create: `${API_BASE}/cat-tags`,
         update: (id) => `${API_BASE}/cat-tags/${id}`,
-        delete: (id) => `${API_BASE}/cat-tags/${id}`
+        delete: (id) => `${API_BASE}/cat-tags/${id}`,
+        toggle: (id, active) => `${API_BASE}/cat-tags/${id}/toggle?active=${encodeURIComponent(active)}`
     },
 
     // University Management
     universities: {
-        list: `${API_BASE}/universities/page`,
-        detail: (id) => `${API_BASE}/universities/${id}`,
-        create: `${API_BASE}/universities`,
-        update: (id) => `${API_BASE}/universities/${id}`,
-        delete: (id) => `${API_BASE}/universities/${id}`
+        list: `${API_BASE}/university/page`,
+        detail: (id) => `${API_BASE}/university/${id}`,
+        create: `${API_BASE}/university`,
+        update: (id) => `${API_BASE}/university/${id}`,
+        delete: (id) => `${API_BASE}/university/${id}`
     },
 
     // Dynamic/Community Management
@@ -121,10 +127,9 @@ const API = {
     crowdfunding: {
         list: `${API_BASE}/crowdfunding/page`,
         detail: (id) => `${API_BASE}/crowdfunding/${id}`,
-        approve: (id) => `${API_BASE}/crowdfunding/${id}/approve`,
-        reject: (id) => `${API_BASE}/crowdfunding/${id}/reject`,
-        close: (id) => `${API_BASE}/crowdfunding/${id}/close`,
-        statistics: `${API_BASE}/crowdfunding/statistics`
+        activate: (id) => `${API_BASE}/crowdfunding/${id}/activate`,
+        cancel: (id) => `${API_BASE}/crowdfunding/${id}/cancel`,
+        statistics: `${API_BASE}/crowdfunding/stats/creator`
     },
 
     // Notification Management
@@ -132,7 +137,7 @@ const API = {
         list: `${API_BASE}/notifications/page`,
         detail: (id) => `${API_BASE}/notifications/${id}`,
         send: `${API_BASE}/notifications/send`,
-        sendBatch: `${API_BASE}/notifications/send-batch`,
+        sendBatch: `${API_BASE}/notifications/batch-send`,
         delete: (id) => `${API_BASE}/notifications/${id}`,
         statistics: `${API_BASE}/notifications/statistics`
     }

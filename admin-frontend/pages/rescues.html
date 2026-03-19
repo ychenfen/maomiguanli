@@ -39,9 +39,9 @@
                     <select id="statusFilter" class="form-control">
                         <option value="">全部状态</option>
                         <option value="PENDING">待处理</option>
-                        <option value="IN_PROGRESS">进行中</option>
-                        <option value="COMPLETED">已完成</option>
-                        <option value="CANCELLED">已取消</option>
+                        <option value="PROCESSING">处理中</option>
+                        <option value="RESOLVED">已解决</option>
+                        <option value="CLOSED">已关闭</option>
                     </select>
                     <button class="btn btn-primary" onclick="window.rescuePageHandlers.search()">搜索</button>
                     <button class="btn btn-secondary" onclick="window.rescuePageHandlers.reset()">重置</button>
@@ -97,13 +97,8 @@
         <div class="modal-body">
             <input type="hidden" id="updateId">
             <div class="form-group">
-                <label>状态</label>
-                <select id="updateStatus" class="form-control">
-                    <option value="PENDING">待处理</option>
-                    <option value="IN_PROGRESS">进行中</option>
-                    <option value="COMPLETED">已完成</option>
-                    <option value="CANCELLED">已取消</option>
-                </select>
+                <label>处理动作</label>
+                <select id="updateStatus" class="form-control"></select>
             </div>
             <div class="form-group">
                 <label>备注</label>
@@ -129,10 +124,10 @@ window.rescuePageHandlers = {
     async loadStatistics() {
         try {
             const stats = await ApiClient.request(API_ENDPOINTS.rescues.statistics);
-            document.getElementById('totalRescues').textContent = stats.total || 0;
-            document.getElementById('pendingRescues').textContent = stats.pending || 0;
-            document.getElementById('completedRescues').textContent = stats.completed || 0;
-            document.getElementById('inProgressRescues').textContent = stats.inProgress || 0;
+            document.getElementById('totalRescues').textContent = stats.total_count || 0;
+            document.getElementById('pendingRescues').textContent = stats.pending_count || 0;
+            document.getElementById('completedRescues').textContent = (stats.resolved_count || 0) + (stats.closed_count || 0);
+            document.getElementById('inProgressRescues').textContent = stats.processing_count || 0;
         } catch (error) {
             console.error('Load statistics error:', error);
         }
@@ -174,14 +169,16 @@ window.rescuePageHandlers = {
         tbody.innerHTML = rescues.map(r => `
             <tr>
                 <td>${r.id}</td>
-                <td>${r.reporterName || '-'}</td>
+                <td>${r.realName || r.username || '-'}</td>
                 <td>${r.location || '-'}</td>
                 <td>${r.description ? (r.description.length > 30 ? r.description.substring(0, 30) + '...' : r.description) : '-'}</td>
                 <td><span class="badge badge-${this.getStatusColor(r.status)}">${this.getStatusText(r.status)}</span></td>
                 <td>${Utils.formatDate(r.createTime)}</td>
                 <td>
                     <button class="btn btn-sm btn-info" onclick="window.rescuePageHandlers.showDetail(${r.id})">详情</button>
-                    <button class="btn btn-sm btn-primary" onclick="window.rescuePageHandlers.showUpdateModal(${r.id}, '${r.status}')">更新</button>
+                    ${r.canRespond || r.canClose ? `
+                        <button class="btn btn-sm btn-primary" onclick="window.rescuePageHandlers.showUpdateModal(${r.id}, ${r.canRespond ? 'true' : 'false'}, ${r.canClose ? 'true' : 'false'})">${r.canRespond ? '接单' : '完成'}</button>
+                    ` : ''}
                 </td>
             </tr>
         `).join('');
@@ -194,23 +191,23 @@ window.rescuePageHandlers = {
             container.innerHTML = '';
             return;
         }
-        container.innerHTML = PaginationComponent.render(
-            window.rescuePageState.currentPage,
-            totalPages,
+        PaginationComponent.render(container, {
+            current: window.rescuePageState.currentPage,
             total,
-            (page) => {
+            pageSize: window.rescuePageState.pageSize,
+            onChange: (page) => {
                 window.rescuePageState.currentPage = page;
                 this.loadRescues();
             }
-        );
+        });
     },
 
     getStatusColor(status) {
-        return { 'PENDING': 'warning', 'IN_PROGRESS': 'info', 'COMPLETED': 'success', 'CANCELLED': 'secondary' }[status] || 'secondary';
+        return { 'PENDING': 'warning', 'PROCESSING': 'info', 'RESOLVED': 'success', 'CLOSED': 'secondary' }[status] || 'secondary';
     },
 
     getStatusText(status) {
-        return { 'PENDING': '待处理', 'IN_PROGRESS': '进行中', 'COMPLETED': '已完成', 'CANCELLED': '已取消' }[status] || status;
+        return { 'PENDING': '待处理', 'PROCESSING': '处理中', 'RESOLVED': '已解决', 'CLOSED': '已关闭' }[status] || status;
     },
 
     search() {
@@ -235,16 +232,21 @@ window.rescuePageHandlers = {
         try {
             Loading.show();
             const r = await ApiClient.request(API_ENDPOINTS.rescues.detail(id));
+            const imageUrls = this.parseImages(r.images).map((item) => item.startsWith('/') ? item : `/${item}`);
             document.getElementById('detailContent').innerHTML = `
                 <div class="detail-section">
                     <h4>救助信息</h4>
-                    <div class="detail-row"><span class="detail-label">报告人:</span><span class="detail-value">${r.reporterName || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">标题:</span><span class="detail-value">${r.title || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">报告人:</span><span class="detail-value">${r.realName || r.username || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">类型:</span><span class="detail-value">${r.typeText || r.type || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">紧急程度:</span><span class="detail-value">${r.priorityText || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">联系方式:</span><span class="detail-value">${r.contactPhone || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">位置:</span><span class="detail-value">${r.location || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">描述:</span><span class="detail-value">${r.description || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">状态:</span><span class="badge badge-${this.getStatusColor(r.status)}">${this.getStatusText(r.status)}</span></div>
+                    ${r.resolveNote ? `<div class="detail-row"><span class="detail-label">完成说明:</span><span class="detail-value">${r.resolveNote}</span></div>` : ''}
                     <div class="detail-row"><span class="detail-label">报告时间:</span><span class="detail-value">${Utils.formatDate(r.createTime)}</span></div>
-                    ${r.photoUrl ? `<div class="detail-row"><span class="detail-label">照片:</span><img src="${r.photoUrl}" style="max-width: 400px; margin-top: 10px;"></div>` : ''}
+                    ${imageUrls.length ? `<div class="detail-row"><span class="detail-label">照片:</span><div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:10px;">${imageUrls.map((url) => `<img src="${url}" style="max-width: 220px; border-radius: 12px;">`).join('')}</div></div>` : ''}
                 </div>
             `;
             Modal.open('detailModal');
@@ -255,10 +257,30 @@ window.rescuePageHandlers = {
         }
     },
 
-    showUpdateModal(id, currentStatus) {
+    parseImages(images) {
+        if (Array.isArray(images)) return images.filter(Boolean);
+        if (!images) return [];
+        try {
+            const parsed = JSON.parse(images);
+            return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch (error) {
+            return [images].filter(Boolean);
+        }
+    },
+
+    showUpdateModal(id, canRespond, canClose) {
+        const actionSelect = document.getElementById('updateStatus');
+        if (!canRespond && !canClose) {
+            Toast.warning('当前状态不可操作');
+            return;
+        }
+
         document.getElementById('updateId').value = id;
-        document.getElementById('updateStatus').value = currentStatus;
         document.getElementById('updateNote').value = '';
+        actionSelect.innerHTML = [
+            canRespond ? '<option value="PROCESSING">接单处理</option>' : '',
+            canClose ? '<option value="CLOSED">确认完成</option>' : ''
+        ].join('');
         Modal.open('updateStatusModal');
     },
 
@@ -269,10 +291,17 @@ window.rescuePageHandlers = {
 
         try {
             Loading.show();
-            await ApiClient.request(API_ENDPOINTS.rescues.updateStatus(id), {
-                method: 'PUT',
-                body: { status, note }
-            });
+            if (status === 'PROCESSING') {
+                await ApiClient.request(API_ENDPOINTS.rescues.respond(id), {
+                    method: 'POST'
+                });
+            } else if (status === 'CLOSED') {
+                await ApiClient.request(API_ENDPOINTS.rescues.close(id, note || '后台确认已完成'), {
+                    method: 'PUT'
+                });
+            } else {
+                throw new Error('当前动作不受支持');
+            }
 
             Toast.success('更新成功');
             Modal.close('updateStatusModal');

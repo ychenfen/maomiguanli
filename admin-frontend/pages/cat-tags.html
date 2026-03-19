@@ -2,23 +2,27 @@
 <div class="page-container">
     <div class="card">
         <div class="card-header">
-            <h3>猫咪标签管理</h3>
-            <button class="btn btn-success" onclick="window.catTagsPageHandlers.showCreateModal()">+ 添加标签</button>
+            <h3>动物标签管理</h3>
+            <button class="btn btn-success" id="createTagBtn" onclick="window.catTagsPageHandlers.showCreateModal()">+ 添加标签</button>
         </div>
         <div class="card-body">
+            <div id="catTagsNotice" style="display: none; margin-bottom: 16px; padding: 12px 14px; border-radius: 8px; background: #fff7e6; border: 1px solid #ffd591; color: #ad6800;"></div>
             <div class="table-container">
                 <table class="table">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>标签名称</th>
+                            <th>标签类型</th>
+                            <th>颜色</th>
                             <th>使用次数</th>
+                            <th>状态</th>
                             <th>创建时间</th>
                             <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="catTagsTableBody">
-                        <tr><td colspan="5" class="text-center">加载中...</td></tr>
+                        <tr><td colspan="8" class="text-center">加载中...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -39,6 +43,29 @@
                 <label>标签名称 *</label>
                 <input type="text" id="tagName" class="form-control" required>
             </div>
+            <div class="form-group">
+                <label>标签类型 *</label>
+                <select id="tagType" class="form-control">
+                    <option value="CHARACTER">性格标签</option>
+                    <option value="STATUS">状态标签</option>
+                    <option value="ACTIVITY">活动标签</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>颜色</label>
+                <input type="color" id="tagColor" class="form-control" value="#67C23A">
+            </div>
+            <div class="form-group">
+                <label>排序值</label>
+                <input type="number" id="tagSortOrder" class="form-control" value="0" min="0">
+            </div>
+            <div class="form-group">
+                <label>状态</label>
+                <select id="tagStatus" class="form-control">
+                    <option value="1">启用</option>
+                    <option value="0">禁用</option>
+                </select>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="Modal.close('tagModal')">取消</button>
@@ -48,7 +75,12 @@
 </div>
 
 <script>
-window.catTagsPageState = window.catTagsPageState || { currentPage: 1, pageSize: 10 };
+window.catTagsPageState = window.catTagsPageState || {
+    currentPage: 1,
+    pageSize: 10,
+    apiUnavailable: false,
+    tags: []
+};
 
 window.catTagsPageHandlers = {
     async init() {
@@ -58,43 +90,97 @@ window.catTagsPageHandlers = {
     async loadTags() {
         try {
             Loading.show();
-            const params = {
-                page: window.catTagsPageState.currentPage,
-                size: window.catTagsPageState.pageSize
-            };
+            const tagsMap = await ApiClient.request(API_ENDPOINTS.catTags.list);
+            const entries = this.flattenTags(tagsMap);
 
-            const response = await ApiClient.request(API_ENDPOINTS.catTags.list, {
-                method: 'GET',
-                params
-            });
-
-            this.renderTable(response.records || []);
-            this.renderPagination(response.total || 0);
+            window.catTagsPageState.apiUnavailable = false;
+            window.catTagsPageState.tags = entries;
+            document.getElementById('createTagBtn').disabled = false;
+            this.setNotice(entries.length ? '当前列表由真实 `/api/cat-tags` 接口聚合而来，不再依赖故障的旧分页接口。' : '');
+            this.renderCurrentPage();
         } catch (error) {
-            Toast.error('加载标签列表失败: ' + error.message);
-            document.getElementById('catTagsTableBody').innerHTML = `
-                <tr><td colspan="5" class="text-center text-danger">加载失败: ${error.message}</td></tr>
-            `;
+            console.error('Load cat tags error:', error);
+            this.setApiUnavailable('当前部署包后端动物标签列表旧接口异常，已尝试切换到新接口；如果这里仍失败，说明后端标签服务整体不可用。');
         } finally {
             Loading.hide();
         }
     },
 
+    flattenTags(tagsMap) {
+        if (!tagsMap || typeof tagsMap !== 'object') {
+            return [];
+        }
+
+        return Object.values(tagsMap)
+            .filter(Array.isArray)
+            .flat()
+            .map((tag) => normalizePayload(tag))
+            .sort((a, b) => {
+                const typeOrder = this.typeSortOrder(a.type) - this.typeSortOrder(b.type);
+                if (typeOrder !== 0) return typeOrder;
+                return (a.sortOrder || 0) - (b.sortOrder || 0) || (a.id || 0) - (b.id || 0);
+            });
+    },
+
+    typeSortOrder(type) {
+        return { CHARACTER: 0, STATUS: 1, ACTIVITY: 2 }[type] ?? 99;
+    },
+
+    setNotice(message) {
+        const notice = document.getElementById('catTagsNotice');
+        if (!notice) return;
+        notice.style.display = message ? 'block' : 'none';
+        notice.textContent = message || '';
+    },
+
+    setApiUnavailable(message) {
+        window.catTagsPageState.apiUnavailable = true;
+        this.setNotice(message);
+        document.getElementById('createTagBtn').disabled = true;
+        document.getElementById('paginationContainer').innerHTML = '';
+        document.getElementById('catTagsTableBody').innerHTML = `
+            <tr><td colspan="8" class="text-center" style="color: #ad6800;">${message}</td></tr>
+        `;
+    },
+
+    renderCurrentPage() {
+        const allTags = window.catTagsPageState.tags || [];
+        const start = (window.catTagsPageState.currentPage - 1) * window.catTagsPageState.pageSize;
+        const records = allTags.slice(start, start + window.catTagsPageState.pageSize);
+        this.renderTable(records);
+        this.renderPagination(allTags.length);
+    },
+
     renderTable(tags) {
         const tbody = document.getElementById('catTagsTableBody');
-        if (tags.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center">暂无数据</td></tr>';
+        if (!tags.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">暂无数据</td></tr>';
             return;
         }
 
-        tbody.innerHTML = tags.map(tag => `
+        tbody.innerHTML = tags.map((tag) => `
             <tr>
                 <td>${tag.id}</td>
-                <td><span class="badge badge-info">${tag.name}</span></td>
+                <td><span class="badge badge-info">${tag.name || '-'}</span></td>
+                <td>${this.getTypeText(tag.type)}</td>
+                <td>
+                    <span style="display:inline-flex;align-items:center;gap:8px;">
+                        <span style="width:14px;height:14px;border-radius:50%;background:${tag.color || '#67C23A'};border:1px solid rgba(0,0,0,0.08);"></span>
+                        ${tag.color || '-'}
+                    </span>
+                </td>
                 <td>${tag.useCount || 0}</td>
+                <td>
+                    <span class="badge badge-${Number(tag.isActive) === 1 ? 'success' : 'secondary'}">
+                        ${Number(tag.isActive) === 1 ? '启用' : '禁用'}
+                    </span>
+                </td>
                 <td>${Utils.formatDate(tag.createTime)}</td>
                 <td>
                     <button class="btn btn-sm btn-primary" onclick="window.catTagsPageHandlers.showEditModal(${tag.id})">编辑</button>
+                    <button class="btn btn-sm btn-warning" onclick="window.catTagsPageHandlers.toggleTag(${tag.id}, ${Number(tag.isActive) === 1 ? 'false' : 'true'})">
+                        ${Number(tag.isActive) === 1 ? '禁用' : '启用'}
+                    </button>
                     <button class="btn btn-sm btn-danger" onclick="window.catTagsPageHandlers.deleteTag(${tag.id})">删除</button>
                 </td>
             </tr>
@@ -102,50 +188,89 @@ window.catTagsPageHandlers = {
     },
 
     renderPagination(total) {
-        const totalPages = Math.ceil(total / window.catTagsPageState.pageSize);
         const container = document.getElementById('paginationContainer');
+        const totalPages = Math.ceil(total / window.catTagsPageState.pageSize);
         if (totalPages <= 1) {
             container.innerHTML = '';
             return;
         }
-        container.innerHTML = PaginationComponent.render(
-            window.catTagsPageState.currentPage,
-            totalPages,
+
+        PaginationComponent.render(container, {
+            current: window.catTagsPageState.currentPage,
             total,
-            (page) => {
+            pageSize: window.catTagsPageState.pageSize,
+            onChange: (page) => {
                 window.catTagsPageState.currentPage = page;
-                this.loadTags();
+                this.renderCurrentPage();
             }
-        );
+        });
+    },
+
+    getTypeText(type) {
+        return { CHARACTER: '性格标签', STATUS: '状态标签', ACTIVITY: '活动标签' }[type] || type || '-';
+    },
+
+    getDefaultColor(type) {
+        return { CHARACTER: '#67C23A', STATUS: '#E6A23C', ACTIVITY: '#409EFF' }[type] || '#67C23A';
+    },
+
+    findTag(id) {
+        return (window.catTagsPageState.tags || []).find((item) => Number(item.id) === Number(id));
     },
 
     showCreateModal() {
+        if (window.catTagsPageState.apiUnavailable) {
+            Toast.warning('当前部署包后端动物标签接口异常，暂不支持新增标签');
+            return;
+        }
         document.getElementById('modalTitle').textContent = '添加标签';
         document.getElementById('tagId').value = '';
         document.getElementById('tagName').value = '';
+        document.getElementById('tagType').value = 'CHARACTER';
+        document.getElementById('tagColor').value = this.getDefaultColor('CHARACTER');
+        document.getElementById('tagSortOrder').value = '0';
+        document.getElementById('tagStatus').value = '1';
         Modal.open('tagModal');
     },
 
-    async showEditModal(id) {
-        try {
-            Loading.show();
-            const tag = await ApiClient.request(API_ENDPOINTS.catTags.detail(id));
-            document.getElementById('modalTitle').textContent = '编辑标签';
-            document.getElementById('tagId').value = tag.id;
-            document.getElementById('tagName').value = tag.name;
-            Modal.open('tagModal');
-        } catch (error) {
-            Toast.error('加载标签信息失败: ' + error.message);
-        } finally {
-            Loading.hide();
+    showEditModal(id) {
+        if (window.catTagsPageState.apiUnavailable) {
+            Toast.warning('当前部署包后端动物标签接口异常，暂不支持编辑标签');
+            return;
         }
+
+        const tag = this.findTag(id);
+        if (!tag) {
+            Toast.error('未找到标签信息');
+            return;
+        }
+
+        document.getElementById('modalTitle').textContent = '编辑标签';
+        document.getElementById('tagId').value = tag.id;
+        document.getElementById('tagName').value = tag.name || '';
+        document.getElementById('tagType').value = tag.type || 'CHARACTER';
+        document.getElementById('tagColor').value = tag.color || this.getDefaultColor(tag.type);
+        document.getElementById('tagSortOrder').value = tag.sortOrder || 0;
+        document.getElementById('tagStatus').value = Number(tag.isActive) === 1 ? '1' : '0';
+        Modal.open('tagModal');
     },
 
     async saveTag() {
-        const id = document.getElementById('tagId').value;
-        const name = document.getElementById('tagName').value.trim();
+        if (window.catTagsPageState.apiUnavailable) {
+            Toast.warning('当前部署包后端动物标签接口异常，暂不支持保存标签');
+            return;
+        }
 
-        if (!name) {
+        const id = document.getElementById('tagId').value;
+        const body = {
+            name: document.getElementById('tagName').value.trim(),
+            type: document.getElementById('tagType').value,
+            color: document.getElementById('tagColor').value,
+            sortOrder: Number(document.getElementById('tagSortOrder').value || 0),
+            isActive: Number(document.getElementById('tagStatus').value || 1)
+        };
+
+        if (!body.name) {
             Toast.warning('请输入标签名称');
             return;
         }
@@ -155,13 +280,13 @@ window.catTagsPageHandlers = {
             if (id) {
                 await ApiClient.request(API_ENDPOINTS.catTags.update(id), {
                     method: 'PUT',
-                    body: { name }
+                    body
                 });
                 Toast.success('更新成功');
             } else {
                 await ApiClient.request(API_ENDPOINTS.catTags.create, {
                     method: 'POST',
-                    body: { name }
+                    body
                 });
                 Toast.success('添加成功');
             }
@@ -175,7 +300,31 @@ window.catTagsPageHandlers = {
         }
     },
 
+    async toggleTag(id, active) {
+        if (window.catTagsPageState.apiUnavailable) {
+            Toast.warning('当前部署包后端动物标签接口异常，暂不支持切换状态');
+            return;
+        }
+
+        try {
+            Loading.show();
+            await ApiClient.request(API_ENDPOINTS.catTags.toggle(id, active), {
+                method: 'PUT'
+            });
+            Toast.success('状态已更新');
+            await this.loadTags();
+        } catch (error) {
+            Toast.error('切换状态失败: ' + error.message);
+        } finally {
+            Loading.hide();
+        }
+    },
+
     async deleteTag(id) {
+        if (window.catTagsPageState.apiUnavailable) {
+            Toast.warning('当前部署包后端动物标签接口异常，暂不支持删除标签');
+            return;
+        }
         if (!confirm('确定要删除这个标签吗？')) return;
 
         try {
@@ -192,6 +341,12 @@ window.catTagsPageHandlers = {
         }
     }
 };
+
+document.getElementById('tagType')?.addEventListener('change', (event) => {
+    if (!document.getElementById('tagId').value) {
+        document.getElementById('tagColor').value = window.catTagsPageHandlers.getDefaultColor(event.target.value);
+    }
+});
 
 window.catTagsPageHandlers.init();
 </script>

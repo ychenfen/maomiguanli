@@ -82,11 +82,22 @@ window.financePageHandlers = {
 
     async loadStatistics() {
         try {
-            const stats = await ApiClient.request(API_ENDPOINTS.finance.statistics);
-            document.getElementById('totalTransactions').textContent = stats.total || 0;
-            document.getElementById('totalIncome').textContent = Utils.formatCurrency(stats.income || 0);
-            document.getElementById('totalExpense').textContent = Utils.formatCurrency(stats.expense || 0);
-            document.getElementById('balance').textContent = Utils.formatCurrency((stats.income || 0) - (stats.expense || 0));
+            const summaryPage = await ApiClient.request(API_ENDPOINTS.finance.list, {
+                method: 'GET',
+                params: { page: 1, size: 100 }
+            });
+            const records = summaryPage.records || [];
+            const income = records
+                .filter((item) => item.type === 'INCOME')
+                .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+            const expense = records
+                .filter((item) => item.type === 'EXPENSE')
+                .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+            document.getElementById('totalTransactions').textContent = summaryPage.total || records.length;
+            document.getElementById('totalIncome').textContent = Utils.formatCurrency(income);
+            document.getElementById('totalExpense').textContent = Utils.formatCurrency(expense);
+            document.getElementById('balance').textContent = Utils.formatCurrency(income - expense);
         } catch (error) {
             console.error('Load statistics error:', error);
         }
@@ -143,15 +154,15 @@ window.financePageHandlers = {
             container.innerHTML = '';
             return;
         }
-        container.innerHTML = PaginationComponent.render(
-            window.financePageState.currentPage,
-            totalPages,
+        PaginationComponent.render(container, {
+            current: window.financePageState.currentPage,
             total,
-            (page) => {
+            pageSize: window.financePageState.pageSize,
+            onChange: (page) => {
                 window.financePageState.currentPage = page;
                 this.loadTransactions();
             }
-        );
+        });
     },
 
     search() {

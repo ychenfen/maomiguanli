@@ -18,15 +18,15 @@
         <div class="stat-card">
             <div class="stat-card-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">💬</div>
             <div class="stat-card-content">
-                <div class="stat-card-value" id="totalComments">0</div>
-                <div class="stat-card-label">总评论数</div>
+                <div class="stat-card-value" id="totalViews">0</div>
+                <div class="stat-card-label">总浏览量</div>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-card-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">📅</div>
             <div class="stat-card-content">
-                <div class="stat-card-value" id="todayDynamics">0</div>
-                <div class="stat-card-label">今日新增</div>
+                <div class="stat-card-value" id="totalComments">0</div>
+                <div class="stat-card-label">总评论数</div>
             </div>
         </div>
     </div>
@@ -90,15 +90,41 @@ window.dynamicsPageHandlers = {
         await this.loadDynamics();
     },
 
+    sumField(records, field) {
+        return records.reduce((total, record) => total + Number(record?.[field] || 0), 0);
+    },
+
+    async loadStatsRecords() {
+        try {
+            const response = await ApiClient.request(API_ENDPOINTS.dynamics.list, {
+                method: 'GET',
+                params: {
+                    page: 1,
+                    size: 100
+                }
+            });
+            return response.records || [];
+        } catch (error) {
+            console.warn('Load dynamics stats records failed:', error);
+            return [];
+        }
+    },
+
     async loadStatistics() {
+        const fallbackRecords = await this.loadStatsRecords();
+
         try {
             const stats = await ApiClient.request(API_ENDPOINTS.dynamics.statistics);
-            document.getElementById('totalDynamics').textContent = stats.total || 0;
-            document.getElementById('totalLikes').textContent = stats.likes || 0;
-            document.getElementById('totalComments').textContent = stats.comments || 0;
-            document.getElementById('todayDynamics').textContent = stats.today || 0;
+            document.getElementById('totalDynamics').textContent = stats.totalCount ?? fallbackRecords.length;
+            document.getElementById('totalLikes').textContent = stats.totalLikes ?? this.sumField(fallbackRecords, 'likeCount');
+            document.getElementById('totalViews').textContent = stats.totalViews ?? this.sumField(fallbackRecords, 'viewCount');
+            document.getElementById('totalComments').textContent = this.sumField(fallbackRecords, 'commentCount');
         } catch (error) {
-            console.error('Load statistics error:', error);
+            console.warn('Load dynamics statistics error, fallback applied:', error);
+            document.getElementById('totalDynamics').textContent = fallbackRecords.length;
+            document.getElementById('totalLikes').textContent = this.sumField(fallbackRecords, 'likeCount');
+            document.getElementById('totalViews').textContent = this.sumField(fallbackRecords, 'viewCount');
+            document.getElementById('totalComments').textContent = this.sumField(fallbackRecords, 'commentCount');
         }
     },
 
@@ -138,7 +164,7 @@ window.dynamicsPageHandlers = {
         tbody.innerHTML = dynamics.map(d => `
             <tr>
                 <td>${d.id}</td>
-                <td>${d.authorName || '-'}</td>
+                <td>${d.realName || d.username || (d.userId ? `用户#${d.userId}` : '-')}</td>
                 <td>${d.content ? (d.content.length > 50 ? d.content.substring(0, 50) + '...' : d.content) : '-'}</td>
                 <td>${d.likeCount || 0}</td>
                 <td>${d.commentCount || 0}</td>
@@ -152,21 +178,16 @@ window.dynamicsPageHandlers = {
     },
 
     renderPagination(total) {
-        const totalPages = Math.ceil(total / window.dynamicsPageState.pageSize);
         const container = document.getElementById('paginationContainer');
-        if (totalPages <= 1) {
-            container.innerHTML = '';
-            return;
-        }
-        container.innerHTML = PaginationComponent.render(
-            window.dynamicsPageState.currentPage,
-            totalPages,
+        PaginationComponent.render(container, {
+            current: window.dynamicsPageState.currentPage,
             total,
-            (page) => {
+            pageSize: window.dynamicsPageState.pageSize,
+            onChange: (page) => {
                 window.dynamicsPageState.currentPage = page;
                 this.loadDynamics();
             }
-        );
+        });
     },
 
     search() {
@@ -191,10 +212,11 @@ window.dynamicsPageHandlers = {
             document.getElementById('detailContent').innerHTML = `
                 <div class="detail-section">
                     <h4>动态信息</h4>
-                    <div class="detail-row"><span class="detail-label">发布者:</span><span class="detail-value">${d.authorName || '-'}</span></div>
+                    <div class="detail-row"><span class="detail-label">发布者:</span><span class="detail-value">${d.realName || d.username || (d.userId ? `用户#${d.userId}` : '-')}</span></div>
                     <div class="detail-row"><span class="detail-label">内容:</span><span class="detail-value">${d.content || '-'}</span></div>
                     <div class="detail-row"><span class="detail-label">点赞数:</span><span class="detail-value">${d.likeCount || 0}</span></div>
                     <div class="detail-row"><span class="detail-label">评论数:</span><span class="detail-value">${d.commentCount || 0}</span></div>
+                    <div class="detail-row"><span class="detail-label">浏览量:</span><span class="detail-value">${d.viewCount || 0}</span></div>
                     <div class="detail-row"><span class="detail-label">发布时间:</span><span class="detail-value">${Utils.formatDate(d.createTime)}</span></div>
                     ${d.images && d.images.length > 0 ? `<div class="detail-row"><span class="detail-label">图片:</span><div>${d.images.map(img => `<img src="${img}" style="max-width: 200px; margin: 5px;">`).join('')}</div></div>` : ''}
                 </div>

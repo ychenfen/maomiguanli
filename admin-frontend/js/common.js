@@ -1,5 +1,83 @@
 // Common Utilities - Auth, API Client, Routing, Notifications
 
+const WINDOWS_1252_EXTENDED = {
+    '€': 128,
+    '‚': 130,
+    'ƒ': 131,
+    '„': 132,
+    '…': 133,
+    '†': 134,
+    '‡': 135,
+    'ˆ': 136,
+    '‰': 137,
+    'Š': 138,
+    '‹': 139,
+    'Œ': 140,
+    'Ž': 142,
+    '‘': 145,
+    '’': 146,
+    '“': 147,
+    '”': 148,
+    '•': 149,
+    '–': 150,
+    '—': 151,
+    '˜': 152,
+    '™': 153,
+    'š': 154,
+    '›': 155,
+    'œ': 156,
+    'ž': 158,
+    'Ÿ': 159
+};
+
+function looksLikeMojibake(value) {
+    if (typeof value !== 'string') return false;
+    if (/[\u4e00-\u9fff]/.test(value)) return false;
+    const matches = value.match(/[À-ÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/g);
+    return Boolean(matches && matches.length >= 2);
+}
+
+function normalizeString(value) {
+    if (!looksLikeMojibake(value)) return value;
+
+    try {
+        const bytes = [];
+        for (const char of value) {
+            const code = char.charCodeAt(0);
+            if (code <= 255) {
+                bytes.push(code);
+                continue;
+            }
+
+            const mapped = WINDOWS_1252_EXTENDED[char];
+            if (mapped === undefined) {
+                return value;
+            }
+            bytes.push(mapped);
+        }
+
+        const decoded = new TextDecoder('utf-8', { fatal: false }).decode(Uint8Array.from(bytes));
+        return /[\u4e00-\u9fff]/.test(decoded) ? decoded : value;
+    } catch (error) {
+        console.warn('Normalize string failed:', error);
+        return value;
+    }
+}
+
+function normalizePayload(value) {
+    if (Array.isArray(value)) {
+        return value.map(normalizePayload);
+    }
+
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, entry]) => [key, normalizePayload(entry)])
+        );
+    }
+
+    return typeof value === 'string' ? normalizeString(value) : value;
+}
+
 // ==================== Authentication ====================
 const Auth = {
     // Check if user is authenticated
@@ -17,13 +95,18 @@ const Auth = {
     // Get current user
     getUser() {
         const user = localStorage.getItem('admin_user');
-        return user ? JSON.parse(user) : null;
+        if (!user) return null;
+
+        const normalized = normalizePayload(JSON.parse(user));
+        localStorage.setItem('admin_user', JSON.stringify(normalized));
+        return normalized;
     },
 
     // Set authentication data
     setAuth(token, user) {
+        const normalizedUser = normalizePayload(user);
         localStorage.setItem('admin_token', token);
-        localStorage.setItem('admin_user', JSON.stringify(user));
+        localStorage.setItem('admin_user', JSON.stringify(normalizedUser));
     },
 
     // Clear authentication data
@@ -122,7 +205,7 @@ const ApiClient = {
                 throw new Error('Unauthorized');
             }
 
-            const result = await response.json();
+            const result = normalizePayload(await response.json());
             console.log('API Response Body:', result);
 
             // Also check response body code
@@ -346,6 +429,20 @@ const Loading = {
 
 // ==================== Modal ====================
 const Modal = {
+    open(id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.add('is-open');
+        }
+    },
+
+    close(id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.remove('is-open');
+        }
+    },
+
     // Show modal
     show(options) {
         const {
