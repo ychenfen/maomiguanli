@@ -368,7 +368,7 @@ window.notificationsPageHandlers = {
             await this.loadNotifications();
         } catch (error) {
             if (/系统异常|接收用户ID不能为空/.test(error.message)) {
-                Toast.error('发送失败', '当前部署包后端通知发送接口异常，通知列表可用，但暂不支持后台手动发送。');
+                Toast.error('发送失败', '通知暂时无法发送，请稍后重试。');
             } else {
                 Toast.error('发送失败: ' + error.message);
             }

@@ -320,11 +320,11 @@ function renderHero() {
   return `
     <section id="hero" class="hero-panel">
       <div class="hero-copy">
-        <span class="section-kicker">已升级为真正的动物救助系统</span>
-        <h1>把领养、救助、纪念、捐赠和个人中心真正串成一条完整闭环。</h1>
+        <span class="section-kicker">校园流浪动物救助平台</span>
+        <h1>把领养、救助、纪念、捐赠和个人中心放进同一个温暖入口。</h1>
         <p>
-          新前台直接接入现有后端接口，统一改为动物档案视角，并把领养流程、救助响应、透明账单、
-          社区互动和个人中心放到同一个入口里。
+          在这里查看动物档案、提交领养申请、发起救助、参与社区互动，也能随时查看捐赠记录、
+          透明账单和个人资料。
         </p>
         <div class="hero-actions">
           <button class="hero-button" data-scroll="adoption">立即查看领养流程</button>
@@ -475,7 +475,7 @@ function renderAdoptionSection() {
       <div class="section-heading">
         <div>
           <span class="section-kicker">二、在线领养</span>
-          <h2>把领养流程、领养须知和申请表真正接起来。</h2>
+          <h2>从浏览档案到提交申请，把领养流程放到清晰顺手的一条线上。</h2>
         </div>
         <button class="pill-button ghost" type="button" data-scroll="profile">查看个人中心</button>
       </div>
@@ -545,7 +545,7 @@ function renderAdoptionSection() {
             <div class="verification-banner ${state.verified ? 'ok' : 'warn'}">
               <div>
                 <strong>${state.verified ? '身份认证已通过' : '当前账号尚未完成身份认证'}</strong>
-                <span>${state.verified ? '可以直接提交领养申请。' : '后端会拦截未认证账号的领养申请，请先去个人中心补齐认证材料。'}</span>
+                <span>${state.verified ? '可以直接提交领养申请。' : '申请领养前请先去个人中心完成身份认证。'}</span>
               </div>
               ${state.verified ? '' : '<button class="pill-button ghost" type="button" data-scroll="verification-center">去做认证</button>'}
             </div>
@@ -598,14 +598,14 @@ function renderRescueSection() {
       <div class="section-heading">
         <div>
           <span class="section-kicker">三、救助中心</span>
-          <h2>补上失踪 / 受伤 / 疾病 / 物资求助，并把响应和完成确认串起来。</h2>
+          <h2>覆盖走失、受伤、疾病、绝育和物资支援，让每一次求助都有人接力。</h2>
         </div>
-        <button class="pill-button ghost" type="button" data-scroll="community">同步到社区动态</button>
+        <button class="pill-button ghost" type="button" data-scroll="community">发布到社区动态</button>
       </div>
       <div class="support-rail">
         <article class="support-card">
           <h3>校园地图选点</h3>
-          <p>不依赖外部地图 SDK，直接用校园平面图热区做点位选择，选中的位置会回填到真实 location 字段。</p>
+          <p>点击校园平面图快速选择位置，也可以结合下方常用点位补充填写。</p>
           <div class="campus-map">
             <div class="campus-map-grid"></div>
             ${CAMPUS_POINTS.map((item) => `
@@ -627,7 +627,7 @@ function renderRescueSection() {
         </article>
         <article class="support-card">
           <h3>校园公益兽医入口</h3>
-          <p>对接端现在直接展示联系人、值班时段和处理方向，方便按伤情快速分流。</p>
+          <p>提供值班时段、联系方式和擅长方向，方便根据现场情况快速联系协助。</p>
           <div class="vet-directory">
             <div>
               <strong>公益兽医值班</strong>
@@ -652,7 +652,7 @@ function renderRescueSection() {
         <div class="rescue-feed">
           ${state.rescueLocked ? `
             <div class="empty-block">
-              <p>救助信息接口需要登录后访问，登录后可查看联系人、紧急程度和一键参与入口。</p>
+              <p>登录后可查看联系人、紧急程度和一键参与入口。</p>
               <button class="hero-button" data-open-auth="login">登录后查看救助列表</button>
             </div>
           ` : rescueItems.map((item) => renderRescueCard(item)).join('') || '<div class="empty-card">暂无救助信息。</div>'}
@@ -711,7 +711,7 @@ function renderRescueSection() {
                 <label>
                   <span>救助图片</span>
                   <input id="rescue-image-file" type="file" accept="image/*" ${state.uploadingField === 'rescue-image' ? 'disabled' : ''}>
-                  <small>${state.rescueForm.imagePath ? `已上传: ${escapeHtml(state.rescueForm.imagePath)}` : '支持直接上传图片，不再需要手填路径。'}</small>
+                  <small>${state.rescueForm.imagePath ? `已上传: ${escapeHtml(state.rescueForm.imagePath)}` : '支持上传现场图片，方便志愿者快速判断情况。'}</small>
                 </label>
                 <label class="toggle-label">
                   <span>需要公益兽医介入</span>
@@ -857,10 +857,10 @@ function renderDonationSection() {
               <label><span>数量说明</span><input id="material-quantity" value="${escapeAttr(state.materialForm.quantity)}" placeholder="例如：猫粮 5kg"></label>
               <label><span>校园捐赠点</span><input id="material-point" value="${escapeAttr(state.materialForm.pickupPoint)}"></label>
               <label><span>备注</span><textarea id="material-note" rows="3" placeholder="送达时间或核销说明。">${escapeHtml(state.materialForm.note)}</textarea></label>
-              <button class="hero-button" type="submit">${state.user ? '登记预约并同步到救助中心' : '登录后登记预约'}</button>
+              <button class="hero-button" type="submit">${state.user ? '登记物资预约' : '登录后登记预约'}</button>
             </form>
             <div class="warning-box">
-              预约会同步生成一条物资类救助记录，志愿者可响应并在完成线下核销后做闭环确认。
+              预约提交后会进入物资支援流程，便于志愿者跟进接收和线下核销。
             </div>
             <div class="mini-list">
               ${(state.materialAppointments || []).slice(0, 4).map((item) => `
@@ -869,7 +869,7 @@ function renderDonationSection() {
                     <strong>${escapeHtml(item.itemTypeText)}</strong>
                     <small>${escapeHtml(item.pickupPoint)}</small>
                   </div>
-                  <span>${escapeHtml(item.syncStatus || '待线下核销')}</span>
+                  <span>${escapeHtml(normalizeMaterialSyncStatus(item.syncStatus))}</span>
                 </div>
               `).join('') || '<div class="empty-mini">还没有物资预约记录。</div>'}
             </div>
@@ -929,7 +929,7 @@ function renderCommunitySection() {
                   </select>
                 </label>
                 <label><span>位置</span><input id="dynamic-location" value="${escapeAttr(state.dynamicForm.location)}" placeholder="例如：图书馆东侧"></label>
-                <label><span>图片路径</span><input id="dynamic-image" value="${escapeAttr(state.dynamicForm.imagePath)}" placeholder="/uploads/dynamic/d1.jpg"></label>
+                <label><span>图片链接</span><input id="dynamic-image" value="${escapeAttr(state.dynamicForm.imagePath)}" placeholder="/uploads/dynamic/d1.jpg"></label>
                 <label><span>内容</span><textarea id="dynamic-content" rows="5" placeholder="分享知识科普、日常观察或纪念文字。">${escapeHtml(state.dynamicForm.content)}</textarea></label>
                 <button class="hero-button" type="submit">发布动态</button>
               </form>
@@ -1148,7 +1148,7 @@ function renderProfileSection() {
                 <li>申请领养前，请先在个人中心完成身份认证并等待审核。</li>
                 <li>救助发布支持联系人、校园位置、紧急程度和公益兽医入口。</li>
                 <li>为爱发电模块已接通众筹、打赏、实物预约和公开账单。</li>
-                <li>收藏与浏览历史仍在当前前台以本地记录方式保存。</li>
+                <li>收藏、申请和支持记录都可以在这里集中查看与整理。</li>
               </ul>
             </article>
           ` : `
@@ -1975,7 +1975,7 @@ async function submitMaterialAppointment() {
     note: state.materialForm.note.trim(),
     itemTypeText: materialTypeText(state.materialForm.itemType),
     createdAt: new Date().toISOString(),
-    syncStatus: '已同步到救助中心'
+    syncStatus: '待联系确认'
   };
 
   if (!payload.contactName || !payload.contactPhone || !payload.quantity || !payload.pickupPoint) {
@@ -2014,7 +2014,7 @@ async function submitMaterialAppointment() {
     };
     await loadUserData();
     render();
-    showToast('实物捐赠预约已同步到救助中心，请等待线下核销', 'success');
+    showToast('实物捐赠预约已登记，请等待工作人员联系', 'success');
   } catch (error) {
     showToast(error.message || '实物捐赠预约失败', 'error');
   }
@@ -2488,6 +2488,12 @@ function materialTypeText(value) {
     MEDICINE: '药品',
     SUPPLIES: '用品'
   }[value] || '物资';
+}
+
+function normalizeMaterialSyncStatus(value) {
+  if (!value) return '待联系确认';
+  if (value === '已同步到救助中心') return '待联系确认';
+  return value;
 }
 
 function formatDate(value) {

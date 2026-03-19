@@ -96,11 +96,11 @@ window.catTagsPageHandlers = {
             window.catTagsPageState.apiUnavailable = false;
             window.catTagsPageState.tags = entries;
             document.getElementById('createTagBtn').disabled = false;
-            this.setNotice(entries.length ? '当前列表由真实 `/api/cat-tags` 接口聚合而来，不再依赖故障的旧分页接口。' : '');
+            this.setNotice('');
             this.renderCurrentPage();
         } catch (error) {
             console.error('Load cat tags error:', error);
-            this.setApiUnavailable('当前部署包后端动物标签列表旧接口异常，已尝试切换到新接口；如果这里仍失败，说明后端标签服务整体不可用。');
+            this.setApiUnavailable('标签数据暂时无法加载，请稍后重试。');
         } finally {
             Loading.hide();
         }
@@ -220,7 +220,7 @@ window.catTagsPageHandlers = {
 
     showCreateModal() {
         if (window.catTagsPageState.apiUnavailable) {
-            Toast.warning('当前部署包后端动物标签接口异常，暂不支持新增标签');
+            Toast.warning('标签服务暂时不可用，请稍后重试');
             return;
         }
         document.getElementById('modalTitle').textContent = '添加标签';
@@ -235,7 +235,7 @@ window.catTagsPageHandlers = {
 
     showEditModal(id) {
         if (window.catTagsPageState.apiUnavailable) {
-            Toast.warning('当前部署包后端动物标签接口异常，暂不支持编辑标签');
+            Toast.warning('标签服务暂时不可用，请稍后重试');
             return;
         }
 
@@ -257,7 +257,7 @@ window.catTagsPageHandlers = {
 
     async saveTag() {
         if (window.catTagsPageState.apiUnavailable) {
-            Toast.warning('当前部署包后端动物标签接口异常，暂不支持保存标签');
+            Toast.warning('标签服务暂时不可用，请稍后重试');
             return;
         }
 
@@ -302,7 +302,7 @@ window.catTagsPageHandlers = {
 
     async toggleTag(id, active) {
         if (window.catTagsPageState.apiUnavailable) {
-            Toast.warning('当前部署包后端动物标签接口异常，暂不支持切换状态');
+            Toast.warning('标签服务暂时不可用，请稍后重试');
             return;
         }
 
@@ -322,7 +322,7 @@ window.catTagsPageHandlers = {
 
     async deleteTag(id) {
         if (window.catTagsPageState.apiUnavailable) {
-            Toast.warning('当前部署包后端动物标签接口异常，暂不支持删除标签');
+            Toast.warning('标签服务暂时不可用，请稍后重试');
             return;
         }
         if (!confirm('确定要删除这个标签吗？')) return;
