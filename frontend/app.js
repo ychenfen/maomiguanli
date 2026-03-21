@@ -19,8 +19,8 @@ const state = {
   authModalOpen: false,
   authMode: 'login',
   authForm: {
-    username: 'zhangsan',
-    password: '123456',
+    username: '',
+    password: '',
     realName: '',
     phone: '',
     email: ''
@@ -123,10 +123,6 @@ const memorialStory = {
     '愿每一只曾在校园里被温柔对待过的小生命，都被记住。纪念丑橘，也提醒我们把救助、绝育、医疗和领养这条路继续走下去。'
 };
 
-const DEFAULT_UNIVERSITIES = [
-  { id: 1, name: '示范大学', city: '北京市' }
-];
-
 const CAMPUS_POINTS = [
   { label: '图书馆后面草坪', x: '18%', y: '26%' },
   { label: '第二食堂门口', x: '68%', y: '24%' },
@@ -180,7 +176,7 @@ async function loadPublicData() {
   state.crowdfunding = pageRecords(unwrapSettled(tasks[5], []));
   state.hotCrowdfunding = unwrapSettled(tasks[6], []);
   state.financeRecords = unwrapSettled(tasks[7], []);
-  state.universities = pageRecords(unwrapSettled(tasks[8], DEFAULT_UNIVERSITIES)) || DEFAULT_UNIVERSITIES;
+  state.universities = pageRecords(unwrapSettled(tasks[8], []));
 
   if (!state.selectedAnimalId) {
     const firstAdoptable = state.cats.find((item) => item.status === 'ADOPTABLE') || state.cats[0];
@@ -280,12 +276,11 @@ function renderHeader() {
   return `
     <header class="site-header">
       <div class="brand-block">
-        <span class="brand-kicker">Campus Rescue Ledger</span>
         <a href="#hero" class="brand-mark" data-scroll="hero">
-          <span class="brand-paw">✦</span>
+          <span class="brand-paw">🐾</span>
           <span>
             <strong>校园流浪动物救助系统</strong>
-            <small>领养 · 救助 · 社区 · 为爱发电</small>
+            <small>动物档案 · 领养 · 救助 · 社区</small>
           </span>
         </a>
       </div>
@@ -318,25 +313,25 @@ function renderHero() {
   const selectedAnimal = getSelectedAnimal();
 
   return `
-    <section id="hero" class="hero-panel">
-      <div class="hero-copy">
-        <span class="section-kicker">校园流浪动物救助平台</span>
-        <h1>把领养、救助、纪念、捐赠和个人中心放进同一个温暖入口。</h1>
-        <p>
-          在这里查看动物档案、提交领养申请、发起救助、参与社区互动，也能随时查看捐赠记录、
-          透明账单和个人资料。
-        </p>
-        <div class="hero-actions">
-          <button class="hero-button" data-scroll="adoption">立即查看领养流程</button>
-          <button class="hero-button ghost-button" data-scroll="donate">先去为爱发电</button>
+    <section id="hero" class="hero-panel hero-panel-compact">
+      <article class="hero-summary">
+        <div class="hero-summary-head">
+          <div>
+            <span class="section-kicker">数据概览</span>
+            <h2 class="hero-title">校园流浪动物救助系统</h2>
+          </div>
+          <div class="hero-actions">
+            <button class="hero-button" data-scroll="archive">动物档案</button>
+            <button class="hero-button ghost-button" data-scroll="adoption">在线领养</button>
+          </div>
         </div>
         <div class="stats-grid">
-          ${renderStat('在档动物', stats.totalCount || 0, '含观察中 / 治疗中')}
-          ${renderStat('可领养', stats.adoptableCount || 0, '已统一展示为公 / 母')}
-          ${renderStat('透明账单', state.financeRecords.length, '公开收支明细')}
-          ${renderStat('社区动态', state.dynamics.length, '支持发帖 / 点赞 / 评论')}
+          ${renderStat('在档动物', stats.totalCount ?? null)}
+          ${renderStat('可领养', stats.adoptableCount ?? null)}
+          ${renderStat('透明账单', state.financeRecords.length)}
+          ${renderStat('社区动态', state.dynamics.length)}
         </div>
-      </div>
+      </article>
       <aside class="hero-aside">
         <article class="spotlight-card">
           <span class="spotlight-label">当前主推项目</span>
@@ -385,7 +380,7 @@ function renderArchiveSection() {
       <div class="section-heading">
         <div>
           <span class="section-kicker">一、动物档案</span>
-          <h2>可检索的动物档案已经接入统一入口。</h2>
+          <h2>动物档案</h2>
         </div>
         <form id="archive-search-form" class="compact-form">
           <input id="archive-keyword" name="keyword" placeholder="搜索动物名称、品种、地点" value="${escapeAttr(state.archiveFilters.keyword)}">
@@ -421,7 +416,7 @@ function renderArchiveSection() {
             <div class="sheet-body">
               <div class="sheet-title-row">
                 <div>
-                  <span class="sheet-eyebrow">Animal File</span>
+                  <span class="sheet-eyebrow">动物档案</span>
                   <h3>${escapeHtml(selected.name)}</h3>
                 </div>
                 <span class="status-pill ${toneForAnimal(selected.status)}">${escapeHtml(selected.statusText || selected.status || '在档')}</span>
@@ -450,9 +445,9 @@ function renderArchiveSection() {
         </article>
         <div class="animal-column">
           <div class="inline-note">
-            <span>可检索字段</span>
+            <span>当前结果</span>
             <strong>${animals.length}</strong>
-            <small>名称 / 状态 / 性别 / 校园地点</small>
+            <small>条档案</small>
           </div>
           <div class="animal-grid">
             ${animals.map((item) => renderAnimalCard(item)).join('') || '<div class="empty-card">没有找到符合条件的动物。</div>'}
@@ -475,22 +470,21 @@ function renderAdoptionSection() {
       <div class="section-heading">
         <div>
           <span class="section-kicker">二、在线领养</span>
-          <h2>从浏览档案到提交申请，把领养流程放到清晰顺手的一条线上。</h2>
+          <h2>在线领养</h2>
         </div>
         <button class="pill-button ghost" type="button" data-scroll="profile">查看个人中心</button>
       </div>
       <div class="flow-board">
         ${[
-          ['1', '浏览档案', '先看动物档案，确认性格、健康状态和校园地点。'],
-          ['2', '填写申请', '提交领养理由、居住条件、经验和联系信息。'],
-          ['3', '等待审核', '系统会根据认证状态和申请信息进入审核。'],
-          ['4', '线下接触', '通过后安排见面互动，确认是否适配。'],
-          ['5', '完成领养', '交接后进入回访期，形成闭环。']
-        ].map(([idx, title, desc]) => `
+          ['1', '浏览档案'],
+          ['2', '提交申请'],
+          ['3', '等待审核'],
+          ['4', '线下接触'],
+          ['5', '完成领养']
+        ].map(([idx, title]) => `
           <article class="flow-step">
             <span>${idx}</span>
             <h3>${title}</h3>
-            <p>${desc}</p>
           </article>
         `).join('')}
       </div>
@@ -531,7 +525,7 @@ function renderAdoptionSection() {
         <article class="form-card">
           <div class="form-card-header">
             <div>
-              <span class="sheet-eyebrow">Selected Animal</span>
+              <span class="sheet-eyebrow">当前对象</span>
               <h3>${selected ? escapeHtml(selected.name) : '请先从动物档案选择对象'}</h3>
             </div>
             ${selected ? `<span class="status-pill ${toneForAnimal(selected.status)}">${escapeHtml(selected.statusText || selected.status || '')}</span>` : ''}
@@ -544,8 +538,8 @@ function renderAdoptionSection() {
           ` : `
             <div class="verification-banner ${state.verified ? 'ok' : 'warn'}">
               <div>
-                <strong>${state.verified ? '身份认证已通过' : '当前账号尚未完成身份认证'}</strong>
-                <span>${state.verified ? '可以直接提交领养申请。' : '申请领养前请先去个人中心完成身份认证。'}</span>
+                <strong>${state.verified ? '认证已通过' : '当前账号未认证'}</strong>
+                <span>${state.verified ? '可以直接提交申请。' : '请先去个人中心完成认证。'}</span>
               </div>
               ${state.verified ? '' : '<button class="pill-button ghost" type="button" data-scroll="verification-center">去做认证</button>'}
             </div>
@@ -598,14 +592,14 @@ function renderRescueSection() {
       <div class="section-heading">
         <div>
           <span class="section-kicker">三、救助中心</span>
-          <h2>覆盖走失、受伤、疾病、绝育和物资支援，让每一次求助都有人接力。</h2>
+          <h2>救助中心</h2>
         </div>
         <button class="pill-button ghost" type="button" data-scroll="community">发布到社区动态</button>
       </div>
       <div class="support-rail">
         <article class="support-card">
           <h3>校园地图选点</h3>
-          <p>点击校园平面图快速选择位置，也可以结合下方常用点位补充填写。</p>
+          <p>点击地图或点位快速填写位置。</p>
           <div class="campus-map">
             <div class="campus-map-grid"></div>
             ${CAMPUS_POINTS.map((item) => `
@@ -627,7 +621,7 @@ function renderRescueSection() {
         </article>
         <article class="support-card">
           <h3>校园公益兽医入口</h3>
-          <p>提供值班时段、联系方式和擅长方向，方便根据现场情况快速联系协助。</p>
+          <p>提供值班时间和联系方式。</p>
           <div class="vet-directory">
             <div>
               <strong>公益兽医值班</strong>
@@ -660,10 +654,10 @@ function renderRescueSection() {
         <article class="form-card">
           <div class="form-card-header">
             <div>
-              <span class="sheet-eyebrow">Publish Rescue</span>
+              <span class="sheet-eyebrow">救助发布</span>
               <h3>发布救助信息</h3>
             </div>
-            <span class="status-pill neutral">支持发布 / 响应 / 完成确认</span>
+            <span class="status-pill neutral">发布 / 响应 / 完成</span>
           </div>
           ${!state.user ? `
             <div class="empty-block">
@@ -742,14 +736,14 @@ function renderDonationSection() {
       <div class="section-heading">
         <div>
           <span class="section-kicker">四、为爱发电</span>
-          <h2>把捐赠、打赏、众筹和账单透明化放到社区前面。</h2>
+          <h2>为爱发电</h2>
         </div>
         <button class="pill-button ghost" type="button" data-scroll="community">再去看社区</button>
       </div>
       <div class="donate-layout">
         <article class="donate-lead">
           <div class="donate-highlight">
-            <span class="sheet-eyebrow">Quick Support</span>
+            <span class="sheet-eyebrow">快速支持</span>
             <h3>${escapeHtml(activeProject?.title || '选择一个正在进行的项目')}</h3>
             <p>${escapeHtml(activeProject?.description || '支持治疗、绝育、猫粮、药品和校园救助日常开销。')}</p>
             ${activeProject ? `
@@ -860,7 +854,7 @@ function renderDonationSection() {
               <button class="hero-button" type="submit">${state.user ? '登记物资预约' : '登录后登记预约'}</button>
             </form>
             <div class="warning-box">
-              预约提交后会进入物资支援流程，便于志愿者跟进接收和线下核销。
+              提交后会同步到物资支援流程。
             </div>
             <div class="mini-list">
               ${(state.materialAppointments || []).slice(0, 4).map((item) => `
@@ -888,7 +882,7 @@ function renderCommunitySection() {
       <div class="section-heading">
         <div>
           <span class="section-kicker">五、社区动态</span>
-          <h2>保留发帖、点赞、评论，再补一块知识 / 日常 / 讣告纪念的内容组织。</h2>
+          <h2>社区动态</h2>
         </div>
         <div class="tab-strip">
           ${[
@@ -909,14 +903,14 @@ function renderCommunitySection() {
           ${state.communityFilter === 'memorial' ? renderMemorialCard() : ''}
         </div>
         <aside class="community-side">
-          <article class="stack-card">
-            <h3>发布动态</h3>
-            ${!state.user ? `
-              <div class="empty-block">
-                <p>登录后可以发布知识科普、动物日常或纪念动态。</p>
-                <button class="hero-button" data-open-auth="login">登录后发帖</button>
-              </div>
-            ` : `
+            <article class="stack-card">
+              <h3>发布动态</h3>
+              ${!state.user ? `
+                <div class="empty-block">
+                  <p>登录后可发布动态。</p>
+                  <button class="hero-button" data-open-auth="login">登录后发帖</button>
+                </div>
+              ` : `
               <form id="dynamic-form" class="section-form slim-form">
                 <label>
                   <span>动态类型</span>
@@ -955,7 +949,7 @@ function renderVerificationPanel() {
       <div class="card-headline">
         <div>
           <h3>身份认证中心</h3>
-          <p>${state.verified ? '当前账号已通过认证，可以直接参与领养与救助流程。' : '支持学号唯一性校验、证件图片上传和申请状态追踪。'}</p>
+          <p>${state.verified ? '当前账号已通过认证。' : '完成认证后可申请领养。'}</p>
         </div>
         <span class="status-pill ${toneForVerification(status)}">${escapeHtml(verificationStatusText(status))}</span>
       </div>
@@ -971,7 +965,7 @@ function renderVerificationPanel() {
           <label>
             <span>所属高校</span>
             <select id="verification-university" ${locked ? 'disabled' : ''}>
-              ${renderOptions((state.universities.length ? state.universities : DEFAULT_UNIVERSITIES).map((item) => [String(item.id), item.name]), state.verificationForm.universityId)}
+              ${renderOptions((state.universities.length ? state.universities : [{ id: '', name: '暂无高校数据' }]).map((item) => [String(item.id), item.name]), state.verificationForm.universityId)}
             </select>
           </label>
           <label>
@@ -1038,7 +1032,7 @@ function renderProfileSection() {
       <div class="section-heading">
         <div>
           <span class="section-kicker">六、个人中心</span>
-          <h2>把个人信息、收藏、申请、浏览历史和捐赠记录集中到一个页面里。</h2>
+          <h2>个人中心</h2>
         </div>
       </div>
       <div class="profile-layout">
@@ -1145,16 +1139,15 @@ function renderProfileSection() {
             <article class="stack-card">
               <h3>帮助中心</h3>
               <ul class="help-list">
-                <li>申请领养前，请先在个人中心完成身份认证并等待审核。</li>
-                <li>救助发布支持联系人、校园位置、紧急程度和公益兽医入口。</li>
-                <li>为爱发电模块已接通众筹、打赏、实物预约和公开账单。</li>
-                <li>收藏、申请和支持记录都可以在这里集中查看与整理。</li>
+                <li>申请领养前请先完成身份认证。</li>
+                <li>救助信息支持位置、联系人和紧急程度。</li>
+                <li>支持记录、收藏和申请状态会集中展示。</li>
               </ul>
             </article>
           ` : `
             <article class="stack-card guest-profile">
               <h3>个人中心预览</h3>
-              <p>登录后可以查看个人信息、我的收藏、领养申请、浏览历史、支持记录和帮助中心。</p>
+              <p>登录后可查看个人信息、收藏和申请记录。</p>
               <button class="hero-button" data-open-auth="login">立即登录</button>
             </article>
           `}
@@ -1172,7 +1165,7 @@ function renderAuthModal() {
       <div class="auth-modal" role="dialog" aria-modal="true" aria-label="登录或注册" onclick="event.stopPropagation()">
         <div class="modal-header">
           <div>
-            <span class="section-kicker">Access Portal</span>
+            <span class="section-kicker">账号入口</span>
             <h2>${state.authMode === 'login' ? '登录系统' : '注册新账号'}</h2>
           </div>
           <button class="icon-button" type="button" data-close-auth>关闭</button>
@@ -1201,11 +1194,12 @@ function renderAuthModal() {
 }
 
 function renderStat(label, value, note) {
+  const displayValue = value === null || value === undefined || value === '' ? '--' : String(value);
   return `
     <article class="stat-card">
       <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(String(value))}</strong>
-      <small>${escapeHtml(note)}</small>
+      <strong>${escapeHtml(displayValue)}</strong>
+      ${note ? `<small>${escapeHtml(note)}</small>` : ''}
     </article>
   `;
 }
