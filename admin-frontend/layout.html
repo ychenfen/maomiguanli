@@ -212,6 +212,15 @@
             Loading.show();
 
             try {
+                if (typeof window.__pageCleanup === 'function') {
+                    try {
+                        window.__pageCleanup();
+                    } catch (cleanupError) {
+                        console.warn('Page cleanup error:', cleanupError);
+                    }
+                    window.__pageCleanup = null;
+                }
+
                 const versionedUrl = `${url}${url.includes('?') ? '&' : '?'}v=20260319002`;
                 const response = await fetch(versionedUrl, { cache: 'no-store' });
                 if (response.ok) {

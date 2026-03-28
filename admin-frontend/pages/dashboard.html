@@ -94,7 +94,7 @@
 </div>
 
 <script>
-const DASHBOARD_HEALTH_LABELS = {
+window.__dashboardHealthLabels = {
     overall: '总体状态',
     database: '数据库',
     cache: '缓存',
@@ -104,7 +104,7 @@ const DASHBOARD_HEALTH_LABELS = {
     lastCheck: '最近检查'
 };
 
-const DASHBOARD_TASK_LABELS = {
+window.__dashboardTaskLabels = {
     total: '合计任务',
     verificationApplications: '认证申请',
     adoptionApplications: '领养申请',
@@ -113,7 +113,15 @@ const DASHBOARD_TASK_LABELS = {
     reportReviews: '待审核举报'
 };
 
+function isDashboardMounted() {
+    return Boolean(document.getElementById('statsCards'));
+}
+
 async function loadDashboardData() {
+    if (!isDashboardMounted()) {
+        return;
+    }
+
     const tasks = [
         loadStatistics(),
         loadUserGrowth(7),
@@ -143,6 +151,11 @@ async function loadStatistics() {
 }
 
 function displayStatistics(data) {
+    const statsContainer = document.getElementById('statsCards');
+    if (!statsContainer) {
+        return;
+    }
+
     const userStats = data.userStatistics || {};
     const catStats = data.catStatistics || {};
     const contentStats = data.contentStatistics || {};
@@ -188,7 +201,7 @@ function displayStatistics(data) {
         }
     ];
 
-    StatsCardComponent.render(document.getElementById('statsCards'), stats);
+    StatsCardComponent.render(statsContainer, stats);
 }
 
 async function loadUserGrowth(days) {
@@ -419,7 +432,7 @@ function renderSystemHealth(data) {
 
     keys.forEach(key => {
         const status = data[key];
-        const label = DASHBOARD_HEALTH_LABELS[key] || key;
+        const label = window.__dashboardHealthLabels[key] || key;
 
         if (key === 'lastCheck') {
             html += `
@@ -466,7 +479,7 @@ function renderPendingTasks(data) {
 
         html += `
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px; background: var(--bg-primary); border-radius: 6px;">
-                <div style="font-size: 14px; color: var(--text-primary);">${DASHBOARD_TASK_LABELS[key] || key}</div>
+                <div style="font-size: 14px; color: var(--text-primary);">${window.__dashboardTaskLabels[key] || key}</div>
                 <span class="badge ${badgeClass}">${count}</span>
             </div>
         `;
@@ -514,8 +527,23 @@ function renderRecentActivities(data) {
 // Initialize dashboard
 loadDashboardData();
 
-// Auto refresh every 5 minutes
-setInterval(loadDashboardData, 5 * 60 * 1000);
+if (window.__dashboardRefreshTimer) {
+    clearInterval(window.__dashboardRefreshTimer);
+}
+
+window.__dashboardRefreshTimer = setInterval(() => {
+    if (!isDashboardMounted()) {
+        return;
+    }
+    loadDashboardData();
+}, 5 * 60 * 1000);
+
+window.__pageCleanup = () => {
+    if (window.__dashboardRefreshTimer) {
+        clearInterval(window.__dashboardRefreshTimer);
+        window.__dashboardRefreshTimer = null;
+    }
+};
 </script>
 
 <style>
