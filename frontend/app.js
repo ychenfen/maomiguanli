@@ -10,6 +10,17 @@ const STORAGE_KEYS = {
   materials: 'animal_rescue_material_appointments'
 };
 
+const VIEW_BY_TARGET = {
+  hero: 'archive',
+  archive: 'archive',
+  adoption: 'adoption',
+  rescue: 'rescue',
+  donate: 'donate',
+  community: 'community',
+  profile: 'profile',
+  'verification-center': 'profile'
+};
+
 const state = {
   token: readToken(),
   user: readJSON(STORAGE_KEYS.user, null),
@@ -35,6 +46,7 @@ const state = {
     status: '',
     gender: ''
   },
+  activeView: 'archive',
   selectedAnimalId: null,
   favorites: readJSON(STORAGE_KEYS.favorites, []),
   history: readJSON(STORAGE_KEYS.history, []),
@@ -256,14 +268,8 @@ function render() {
   app.innerHTML = `
     <div class="app-shell">
       ${renderHeader()}
-      ${renderHero()}
       <main class="page-main">
-        ${renderArchiveSection()}
-        ${renderAdoptionSection()}
-        ${renderRescueSection()}
-        ${renderDonationSection()}
-        ${renderCommunitySection()}
-        ${renderProfileSection()}
+        ${renderCurrentView()}
       </main>
       ${renderAuthModal()}
       <div class="toast-host" id="toast-host"></div>
@@ -276,7 +282,7 @@ function renderHeader() {
   return `
     <header class="site-header">
       <div class="brand-block">
-        <a href="#hero" class="brand-mark" data-scroll="hero">
+        <a href="#archive" class="brand-mark" data-scroll="archive">
           <span class="brand-paw">🐾</span>
           <span>
             <strong>校园流浪动物救助系统</strong>
@@ -285,12 +291,12 @@ function renderHeader() {
         </a>
       </div>
       <nav class="site-nav">
-        <button class="nav-link" data-scroll="archive">动物档案</button>
-        <button class="nav-link" data-scroll="adoption">在线领养</button>
-        <button class="nav-link" data-scroll="rescue">救助中心</button>
-        <button class="nav-link" data-scroll="donate">为爱发电</button>
-        <button class="nav-link" data-scroll="community">社区动态</button>
-        <button class="nav-link" data-scroll="profile">个人中心</button>
+        <button class="nav-link ${state.activeView === 'archive' ? 'is-active' : ''}" data-scroll="archive">动物档案</button>
+        <button class="nav-link ${state.activeView === 'adoption' ? 'is-active' : ''}" data-scroll="adoption">在线领养</button>
+        <button class="nav-link ${state.activeView === 'rescue' ? 'is-active' : ''}" data-scroll="rescue">救助中心</button>
+        <button class="nav-link ${state.activeView === 'donate' ? 'is-active' : ''}" data-scroll="donate">为爱发电</button>
+        <button class="nav-link ${state.activeView === 'community' ? 'is-active' : ''}" data-scroll="community">社区动态</button>
+        <button class="nav-link ${state.activeView === 'profile' ? 'is-active' : ''}" data-scroll="profile">个人中心</button>
       </nav>
       <div class="header-actions">
         <a class="admin-link" href="${escapeAttr(`${ADMIN_BASE}/login.html`)}" target="_blank" rel="noreferrer">管理后台</a>
@@ -305,6 +311,24 @@ function renderHeader() {
       </div>
     </header>
   `;
+}
+
+function renderCurrentView() {
+  switch (state.activeView) {
+    case 'adoption':
+      return renderAdoptionSection();
+    case 'rescue':
+      return renderRescueSection();
+    case 'donate':
+      return renderDonationSection();
+    case 'community':
+      return renderCommunitySection();
+    case 'profile':
+      return renderProfileSection();
+    case 'archive':
+    default:
+      return renderArchiveSection();
+  }
 }
 
 function renderHero() {
@@ -453,7 +477,7 @@ function renderArchiveSection() {
             ${animals.map((item) => renderAnimalCard(item)).join('') || '<div class="empty-card">没有找到符合条件的动物。</div>'}
           </div>
           <div class="location-strips">
-            ${locations.slice(0, 6).map((location) => `<span>${escapeHtml(location)}</span>`).join('')}
+            ${locations.slice(0, 4).map((location) => `<span>${escapeHtml(location)}</span>`).join('')}
           </div>
         </div>
       </div>
@@ -614,7 +638,7 @@ function renderRescueSection() {
             `).join('')}
           </div>
           <div class="chip-row">
-            ${locationSeeds.slice(0, 6).map((item) => `
+            ${locationSeeds.slice(0, 4).map((item) => `
               <button class="chip-button" type="button" data-use-location="${escapeAttr(item)}">${escapeHtml(item)}</button>
             `).join('')}
           </div>
@@ -818,7 +842,7 @@ function renderDonationSection() {
           <article class="stack-card">
             <h3>账单透明化</h3>
             <div class="ledger-table">
-              ${state.financeRecords.slice(0, 8).map((item) => `
+              ${state.financeRecords.slice(0, 6).map((item) => `
                 <div class="ledger-row">
                   <div>
                     <strong>${escapeHtml(item.category || item.typeText || '账单')}</strong>
@@ -875,7 +899,7 @@ function renderDonationSection() {
 }
 
 function renderCommunitySection() {
-  const feed = filteredDynamics();
+  const feed = filteredDynamics().slice(0, 4);
 
   return `
     <section id="community" class="content-section">
@@ -1383,9 +1407,17 @@ async function handleClick(event) {
   }
 
   if (trigger.dataset.scroll) {
-    const section = document.getElementById(trigger.dataset.scroll);
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const targetId = trigger.dataset.scroll;
+    const view = VIEW_BY_TARGET[targetId];
+
+    if (view && state.activeView !== view) {
+      state.activeView = view;
+      render();
+    }
+
+    const scrollTarget = document.getElementById(targetId) || document.getElementById(view);
+    if (scrollTarget) {
+      scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     if (trigger.dataset.fillProject) {
       state.donationForm.crowdfundingId = trigger.dataset.fillProject;
