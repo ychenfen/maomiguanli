@@ -106,7 +106,7 @@ CREATE TABLE `cat` (
 
 LOCK TABLES `cat` WRITE;
 /*!40000 ALTER TABLE `cat` DISABLE KEYS */;
-INSERT INTO `cat` VALUES (1,1,'橘子','中华田园猫',1,'2岁','橘色','亲人、活泼、贪吃','/uploads/cats/cat1.jpg','ADOPTABLE','健康',1,1,'图书馆东侧','2024-03-15','橘子是在图书馆东侧发现的，当时瘦骨嶙峋，经过志愿者们的悉心照料，现在已经是一只健康的大橘猫了。','橘子是一只非常亲人的大橘猫，喜欢被摸，会主动蹭人。已完成绝育和疫苗接种。',165,42,5,3,'2026-01-04 15:48:41','2026-02-01 08:22:22',0,0),(2,1,'小黑','中华田园猫',1,'1岁半','黑色','高冷、独立、聪明','/uploads/cats/cat2.jpg','ADOPTABLE','健康',1,1,'食堂后门','2024-05-20','小黑在食堂后门被发现，是一只非常聪明的猫咪。','小黑虽然看起来高冷，但熟悉后非常粘人。毛色纯黑发亮，眼睛金黄。',100,28,3,3,'2026-01-04 15:48:41','2026-01-04 15:56:12',0,0),(3,1,'花花','中华田园猫',0,'3岁','三花','温柔、安静、胆小','/uploads/cats/cat3.jpg','ADOPTABLE','健康',1,1,'宿舍区绿化带','2024-01-10','花花是在宿舍区绿化带发现的流浪猫妈妈。','花花性格温柔安静，不吵不闹，适合喜欢安静的领养人。',88,35,2,5,'2026-01-04 15:48:41','2026-01-04 16:22:55',0,0),(4,1,'奶牛','中华田园猫',1,'8个月','黑白','活泼、调皮、粘人','/uploads/cats/cat4.jpg','ADOPTABLE','健康',1,1,'操场看台下','2024-08-05','奶牛是在操场看台下发现的小奶猫。','奶牛花色像奶牛一样可爱，性格活泼好动。',134,56,8,3,'2026-01-04 15:48:41','2026-01-04 15:48:41',0,0),(5,1,'咪咪','英短串',0,'2岁','蓝灰色','温顺、乖巧、爱睡觉','/uploads/cats/cat5.jpg','ADOPTED','健康',1,1,'教学楼走廊','2024-02-28','咪咪疑似是被遗弃的家猫，已成功被领养。','咪咪已于2024年9月被爱心人士领养。',203,78,12,5,'2026-01-04 15:48:41','2026-01-04 15:48:41',0,0),(6,1,'小橘','中华田园猫',1,'6个月','橘白','活泼、好奇、亲人','/uploads/cats/cat6.jpg','OBSERVATION','观察中',0,0,'校门口','2024-11-01','小橘是最近在校门口发现的小流浪猫。','小橘正在适应期，等待绝育和疫苗接种后将开放领养。',45,18,0,3,'2026-01-04 15:48:41','2026-01-04 15:48:41',0,0),(7,1,'团团','中华田园猫',0,'4岁','玳瑁','独立、警觉、慢热','/uploads/cats/cat7.jpg','TREATMENT','治疗中-皮肤病',1,1,'实验楼后','2024-10-15','团团被发现时有轻微皮肤病，正在接受治疗。','团团性格独立，需要有耐心的领养人。康复后将开放领养。',32,12,0,5,'2026-01-04 15:48:41','2026-01-04 15:48:41',0,0);
+INSERT INTO `cat` VALUES (1,1,'橘子','中华田园猫',1,'2岁','橘色','亲人、活泼、贪吃','/uploads/cats/cat1.jpg','ADOPTABLE','健康',1,1,'图书馆东侧','2024-03-15','橘子是在图书馆东侧发现的，当时瘦骨嶙峋，经过志愿者们的悉心照料，现在已经是一只健康的大橘猫了。','橘子是一只非常亲人的大橘猫，喜欢被摸，会主动蹭人。已完成绝育和疫苗接种。',166,42,5,3,'2026-01-04 15:48:41','2026-03-18 01:13:43',0,0),(2,1,'小黑','中华田园猫',1,'1岁半','黑色','高冷、独立、聪明','/uploads/cats/cat2.jpg','ADOPTABLE','健康',1,1,'食堂后门','2024-05-20','小黑在食堂后门被发现，是一只非常聪明的猫咪。','小黑虽然看起来高冷，但熟悉后非常粘人。毛色纯黑发亮，眼睛金黄。',100,28,3,3,'2026-01-04 15:48:41','2026-01-04 15:56:12',0,0),(3,1,'花花','中华田园猫',0,'3岁','三花','温柔、安静、胆小','/uploads/cats/cat3.jpg','ADOPTABLE','健康',1,1,'宿舍区绿化带','2024-01-10','花花是在宿舍区绿化带发现的流浪猫妈妈。','花花性格温柔安静，不吵不闹，适合喜欢安静的领养人。',88,35,2,5,'2026-01-04 15:48:41','2026-01-04 16:22:55',0,0),(4,1,'奶牛','中华田园猫',1,'8个月','黑白','活泼、调皮、粘人','/uploads/cats/cat4.jpg','ADOPTABLE','健康',1,1,'操场看台下','2024-08-05','奶牛是在操场看台下发现的小奶猫。','奶牛花色像奶牛一样可爱，性格活泼好动。',134,56,8,3,'2026-01-04 15:48:41','2026-01-04 15:48:41',0,0),(5,1,'咪咪','英短串',0,'2岁','蓝灰色','温顺、乖巧、爱睡觉','/uploads/cats/cat5.jpg','ADOPTED','健康',1,1,'教学楼走廊','2024-02-28','咪咪疑似是被遗弃的家猫，已成功被领养。','咪咪已于2024年9月被爱心人士领养。',203,78,12,5,'2026-01-04 15:48:41','2026-01-04 15:48:41',0,0),(6,1,'小橘','中华田园猫',1,'6个月','橘白','活泼、好奇、亲人','/uploads/cats/cat6.jpg','OBSERVATION','观察中',0,0,'校门口','2024-11-01','小橘是最近在校门口发现的小流浪猫。','小橘正在适应期，等待绝育和疫苗接种后将开放领养。',45,18,0,3,'2026-01-04 15:48:41','2026-01-04 15:48:41',0,0),(7,1,'团团','中华田园猫',0,'4岁','玳瑁','独立、警觉、慢热','/uploads/cats/cat7.jpg','TREATMENT','治疗中-皮肤病',1,1,'实验楼后','2024-10-15','团团被发现时有轻微皮肤病，正在接受治疗。','团团性格独立，需要有耐心的领养人。康复后将开放领养。',32,12,0,5,'2026-01-04 15:48:41','2026-01-04 15:48:41',0,0);
 /*!40000 ALTER TABLE `cat` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -145,7 +145,7 @@ CREATE TABLE `cat_dynamic` (
   KEY `idx_create_time` (`create_time`),
   CONSTRAINT `cat_dynamic_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
   CONSTRAINT `cat_dynamic_ibfk_2` FOREIGN KEY (`cat_id`) REFERENCES `cat` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ç¤¾åŒºåŠ¨æ€è¡¨';
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ç¤¾åŒºåŠ¨æ€è¡¨';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -154,7 +154,7 @@ CREATE TABLE `cat_dynamic` (
 
 LOCK TABLES `cat_dynamic` WRITE;
 /*!40000 ALTER TABLE `cat_dynamic` DISABLE KEYS */;
-INSERT INTO `cat_dynamic` VALUES (7,3,1,'今天去看望了橘子，它又胖了一圈！希望能尽快找到爱它的主人~','[\"/uploads/dynamic/d1.jpg\"]',NULL,'图书馆东侧','PHOTO',23,5,0,0,10,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-01-19 22:53:57',0),(8,5,2,'小黑今天状态很好，毛发越来越亮了。给它拍了一组照片！','[\"/uploads/dynamic/d2.jpg\"]',NULL,'志愿者之家','PHOTO',45,8,0,0,10,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-01-19 22:53:57',0),(9,3,NULL,'【投喂日记】今天傍晚在食堂后面投喂了5只流浪猫，天气渐冷，希望它们都能平安过冬。','[\"/uploads/dynamic/d3.jpg\"]',NULL,'食堂后门','FEED',67,12,0,0,10,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-01-19 22:53:57',0),(10,4,5,'今天正式领养了咪咪！谢谢志愿者们的付出，我会好好照顾它的！','[\"/uploads/dynamic/dynamic1.jpg\"]',NULL,'新家','UPDATE',89,15,0,0,10,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-01-19 22:53:57',0),(11,5,6,'新救助的小橘正在适应环境，已经会用猫砂盆了！','[\"/uploads/dynamic/dynamic2.jpg\"]',NULL,'志愿者之家','UPDATE',34,6,0,0,10,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-01-19 22:53:57',0),(12,5,7,'团团的皮肤病治疗进展顺利，医生说再治疗两周就能康复了。','[\"/uploads/dynamic/dynamic3.jpg\"]',NULL,'宠物医院','UPDATE',56,9,0,0,16,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-02-01 08:22:22',0);
+INSERT INTO `cat_dynamic` VALUES (7,3,1,'今天去看望了橘子，它又胖了一圈！希望能尽快找到爱它的主人~','[\"/uploads/dynamic/d1.jpg\"]',NULL,'图书馆东侧','PHOTO',23,5,0,0,10,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-01-19 22:53:57',0),(8,5,2,'小黑今天状态很好，毛发越来越亮了。给它拍了一组照片！','[\"/uploads/dynamic/d2.jpg\"]',NULL,'志愿者之家','PHOTO',45,8,0,0,10,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-01-19 22:53:57',0),(9,3,NULL,'【投喂日记】今天傍晚在食堂后面投喂了5只流浪猫，天气渐冷，希望它们都能平安过冬。','[\"/uploads/dynamic/d3.jpg\"]',NULL,'食堂后门','FEED',67,12,0,0,10,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-01-19 22:53:57',0),(10,4,5,'今天正式领养了咪咪！谢谢志愿者们的付出，我会好好照顾它的！','[\"/uploads/dynamic/dynamic1.jpg\"]',NULL,'新家','UPDATE',89,15,0,0,10,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-01-19 22:53:57',0),(11,5,6,'新救助的小橘正在适应环境，已经会用猫砂盆了！','[\"/uploads/dynamic/dynamic2.jpg\"]',NULL,'志愿者之家','UPDATE',34,6,0,0,10,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-01-19 22:53:57',0),(12,5,7,'团团的皮肤病治疗进展顺利，医生说再治疗两周就能康复了。','[\"/uploads/dynamic/dynamic3.jpg\"]',NULL,'宠物医院','UPDATE',56,9,0,0,17,0,'APPROVED',NULL,NULL,NULL,'2026-01-04 15:48:41','2026-03-18 01:38:48',0);
 /*!40000 ALTER TABLE `cat_dynamic` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -237,7 +237,7 @@ CREATE TABLE `cat_tag_relation` (
   KEY `idx_tag_id` (`tag_id`),
   CONSTRAINT `cat_tag_relation_ibfk_1` FOREIGN KEY (`cat_id`) REFERENCES `cat` (`id`) ON DELETE CASCADE,
   CONSTRAINT `cat_tag_relation_ibfk_2` FOREIGN KEY (`tag_id`) REFERENCES `cat_tag` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='çŒ«å’ªæ ‡ç­¾å…³è”è¡¨';
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='çŒ«å’ªæ ‡ç­¾å…³è”è¡¨';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -276,7 +276,7 @@ CREATE TABLE `cloud_adoption` (
   KEY `idx_active` (`is_active`),
   CONSTRAINT `cloud_adoption_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
   CONSTRAINT `cloud_adoption_ibfk_2` FOREIGN KEY (`cat_id`) REFERENCES `cat` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='äº‘å…»å…³ç³»è¡¨';
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='äº‘å…»å…³ç³»è¡¨';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -317,7 +317,7 @@ CREATE TABLE `comment` (
   CONSTRAINT `comment_ibfk_1` FOREIGN KEY (`dynamic_id`) REFERENCES `cat_dynamic` (`id`) ON DELETE CASCADE,
   CONSTRAINT `comment_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
   CONSTRAINT `comment_ibfk_3` FOREIGN KEY (`reply_to_user_id`) REFERENCES `user` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='è¯„è®ºè¡¨';
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='è¯„è®ºè¡¨';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -399,7 +399,7 @@ CREATE TABLE `donation` (
   KEY `idx_status` (`status`),
   KEY `idx_cat_id` (`cat_id`),
   KEY `idx_create_time` (`create_time`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='æèµ è®°å½•è¡¨';
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='æèµ è®°å½•è¡¨';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -489,7 +489,7 @@ CREATE TABLE `identity_verification` (
   CONSTRAINT `identity_verification_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
   CONSTRAINT `identity_verification_ibfk_2` FOREIGN KEY (`university_id`) REFERENCES `university` (`id`),
   CONSTRAINT `identity_verification_ibfk_3` FOREIGN KEY (`review_user_id`) REFERENCES `user` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='èº«ä»½è®¤è¯è¡¨';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='èº«ä»½è®¤è¯è¡¨';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -498,6 +498,7 @@ CREATE TABLE `identity_verification` (
 
 LOCK TABLES `identity_verification` WRITE;
 /*!40000 ALTER TABLE `identity_verification` DISABLE KEYS */;
+INSERT INTO `identity_verification` VALUES (1,2,1,'张三','2021001001','计算机学院','110101199901011234','../uploads/image/2026/03/19/image_20260319083252_65.jpg','../uploads/image/2026/03/19/image_20260319083252_985.jpg','../uploads/image/2026/03/19/image_20260319083252_446.jpg','STUDENT','PENDING',NULL,NULL,NULL,'2030-03-19 00:00:00',NULL,NULL);
 /*!40000 ALTER TABLE `identity_verification` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -635,7 +636,7 @@ CREATE TABLE `rescue_info` (
   KEY `volunteer_id` (`volunteer_id`),
   CONSTRAINT `rescue_info_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
   CONSTRAINT `rescue_info_ibfk_2` FOREIGN KEY (`volunteer_id`) REFERENCES `user` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='æ•‘åŠ©ä¿¡æ¯è¡¨';
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='æ•‘åŠ©ä¿¡æ¯è¡¨';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -644,7 +645,7 @@ CREATE TABLE `rescue_info` (
 
 LOCK TABLES `rescue_info` WRITE;
 /*!40000 ALTER TABLE `rescue_info` DISABLE KEYS */;
-INSERT INTO `rescue_info` VALUES (5,4,'发现受伤流浪猫','INJURED','在图书馆后面发现一只流浪猫，腿部好像受伤了，需要救助。','[\"uploads/rescue/rescue1.jpg\"]','图书馆后面草坪','13800138003','RESOLVED',1,NULL,NULL,NULL,6,'2026-01-04 15:48:41','2026-02-01 08:22:22',0),(6,6,'食堂附近有猫咪需要帮助','INJURED','看到一只猫咪眼睛好像有问题，一直流泪，需要医疗救助。','[\"uploads/rescue/rescue2.jpg\"]','第二食堂门口','13800138005','PROCESSING',1,NULL,NULL,NULL,0,'2026-01-04 15:48:41','2026-01-04 15:48:41',0),(7,4,'宿舍楼下发现小奶猫','LOST','在7号宿舍楼下发现一窝小奶猫，大概4只，需要救助。','[\"uploads/rescue/rescue3.jpg\"]','7号宿舍楼绿化带','13800138003','RESOLVED',0,NULL,NULL,NULL,0,'2026-01-04 15:48:41','2026-01-04 15:48:41',0),(8,6,'需要猫粮物资','MATERIAL','最近救助的猫咪比较多，猫粮消耗很快，急需猫粮物资支援。','[\"uploads/rescue/rescue4.jpg\"]','志愿者活动中心','13800138005','PENDING',0,NULL,NULL,NULL,0,'2026-01-04 15:48:41','2026-01-04 15:48:41',0);
+INSERT INTO `rescue_info` VALUES (5,4,'发现受伤流浪猫','INJURED','在图书馆后面发现一只流浪猫，腿部好像受伤了，需要救助。','[\"uploads/rescue/rescue1.jpg\"]','图书馆后面草坪','13800138003','RESOLVED',1,NULL,NULL,NULL,6,'2026-01-04 15:48:41','2026-02-01 08:22:22',0),(6,6,'食堂附近有猫咪需要帮助','INJURED','看到一只猫咪眼睛好像有问题，一直流泪，需要医疗救助。','[\"uploads/rescue/rescue2.jpg\"]','第二食堂门口','13800138005','PROCESSING',1,NULL,NULL,NULL,0,'2026-01-04 15:48:41','2026-01-04 15:48:41',0),(7,4,'宿舍楼下发现小奶猫','LOST','在7号宿舍楼下发现一窝小奶猫，大概4只，需要救助。','[\"uploads/rescue/rescue3.jpg\"]','7号宿舍楼绿化带','13800138003','RESOLVED',0,NULL,NULL,NULL,0,'2026-01-04 15:48:41','2026-01-04 15:48:41',0),(8,6,'需要猫粮物资','MATERIAL','最近救助的猫咪比较多，猫粮消耗很快，急需猫粮物资支援。','[\"uploads/rescue/rescue4.jpg\"]','志愿者活动中心','13800138005','PENDING',0,NULL,NULL,NULL,0,'2026-01-04 15:48:41','2026-01-04 15:48:41',0),(11,2,'校园捐赠预约 · 猫粮','MATERIAL','【预约人】张三\n【物资数量】猫粮 5kg\n【备注】爱心捐赠\n【处理方式】请志愿者对接收货并在线下核销后完成闭环确认',NULL,'公益社团办公室','13800138001','PENDING',0,NULL,NULL,NULL,0,'2026-03-19 08:39:12','2026-03-19 08:39:12',0);
 /*!40000 ALTER TABLE `rescue_info` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -759,13 +760,9 @@ CREATE TABLE `user` (
 
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
-INSERT INTO `user` VALUES (1,'admin','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','ç³»ç»Ÿç®¡ç†å‘˜',NULL,NULL,NULL,NULL,'SUPER_ADMIN',1,NULL,NULL,NULL,0,0,NULL,'2025-10-24 16:40:31','2026-02-01 08:25:25',26),(2,'zhangsan','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','å¼ ä¸‰','2021001001','13800138001','zhangsan@edu.cn',NULL,'USER',1,1,'è®¡ç®—æœºå­¦é™¢','å–œæ¬¢å°åŠ¨ç‰©ï¼Œå¸Œæœ›èƒ½é¢†å…»ä¸€åªçŒ«å’ª',0,0,NULL,'2025-12-24 20:02:41','2025-12-24 20:02:41',0),(3,'lisi','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','æŽå››','2021001002','13800138002','lisi@edu.cn',NULL,'VOLUNTEER',1,0,'æ–‡å­¦é™¢','æ ¡å›­æµæµªçŒ«æ•‘åŠ©å¿—æ„¿è€…ï¼Œå·²å‚ä¸Žæ•‘åŠ©20+åªçŒ«å’ª',0,0,NULL,'2025-12-24 20:02:41','2025-12-24 20:02:41',0),(4,'wangwu','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','çŽ‹äº”','2021001003','13800138003','wangwu@edu.cn',NULL,'USER',1,1,'ç»æµŽç®¡ç†å­¦é™¢','çŒ«å’ªçˆ±å¥½è€…',0,0,NULL,'2025-12-24 20:02:41','2025-12-24 20:02:41',0),(5,'zhaoliu','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','èµµå…­','2020002001','13800138004','zhaoliu@edu.cn',NULL,'VOLUNTEER',1,0,'è‰ºæœ¯å­¦é™¢','æ“…é•¿çŒ«å’ªæ‘„å½±ï¼Œè´Ÿè´£çŒ«å’ªæ¡£æ¡ˆæ‹æ‘„',0,0,NULL,'2025-12-24 20:02:41','2025-12-24 20:02:41',0),(6,'sunqi','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','å­™ä¸ƒ','2022003001','13800138005','sunqi@edu.cn',NULL,'USER',1,1,'åŒ»å­¦é™¢','æœ‰å…»çŒ«ç»éªŒï¼Œå®¶é‡Œå·²æœ‰ä¸€åªçŒ«',0,0,NULL,'2025-12-24 20:02:41','2025-12-24 20:02:41',0);
+INSERT INTO `user` VALUES (1,'admin','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','ç³»ç»Ÿç®¡ç†å‘˜',NULL,NULL,NULL,NULL,'SUPER_ADMIN',1,NULL,NULL,NULL,0,0,NULL,'2025-10-24 16:40:31','2026-03-28 13:05:48',54),(2,'zhangsan','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','å¼ ä¸‰','2021001001','13800138001','zhangsan@edu.cn',NULL,'USER',1,1,'è®¡ç®—æœºå­¦é™¢','å–œæ¬¢å°åŠ¨ç‰©ï¼Œå¸Œæœ›èƒ½é¢†å…»ä¸€åªçŒ«å’ª',0,0,NULL,'2025-12-24 20:02:41','2026-03-19 00:28:42',16),(3,'lisi','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','æŽå››','2021001002','13800138002','lisi@edu.cn',NULL,'VOLUNTEER',1,0,'æ–‡å­¦é™¢','æ ¡å›­æµæµªçŒ«æ•‘åŠ©å¿—æ„¿è€…ï¼Œå·²å‚ä¸Žæ•‘åŠ©20+åªçŒ«å’ª',0,0,NULL,'2025-12-24 20:02:41','2025-12-24 20:02:41',0),(4,'wangwu','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','çŽ‹äº”','2021001003','13800138003','wangwu@edu.cn',NULL,'USER',1,1,'ç»æµŽç®¡ç†å­¦é™¢','çŒ«å’ªçˆ±å¥½è€…',0,0,NULL,'2025-12-24 20:02:41','2025-12-24 20:02:41',0),(5,'zhaoliu','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','èµµå…­','2020002001','13800138004','zhaoliu@edu.cn',NULL,'VOLUNTEER',1,0,'è‰ºæœ¯å­¦é™¢','æ“…é•¿çŒ«å’ªæ‘„å½±ï¼Œè´Ÿè´£çŒ«å’ªæ¡£æ¡ˆæ‹æ‘„',0,0,NULL,'2025-12-24 20:02:41','2025-12-24 20:02:41',0),(6,'sunqi','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi','å­™ä¸ƒ','2022003001','13800138005','sunqi@edu.cn',NULL,'USER',1,1,'åŒ»å­¦é™¢','æœ‰å…»çŒ«ç»éªŒï¼Œå®¶é‡Œå·²æœ‰ä¸€åªçŒ«',0,0,NULL,'2025-12-24 20:02:41','2025-12-24 20:02:41',0);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Dumping routines for database 'cat_rescue'
---
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -776,4 +773,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-02-01  8:54:44
+-- Dump completed on 2026-03-28 14:21:23

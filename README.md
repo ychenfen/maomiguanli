@@ -1,136 +1,69 @@
-# 猫咪领养系统 - 快速启动指南
+# 校园流浪动物救助系统部署包
 
-## 一键启动（推荐）
+这个目录是可直接交付的运行包，包含：
 
-**双击运行：`一键启动.bat`**
+- `backend/`：Spring Boot 后端与静态资源
+- `frontend/`：用户前端
+- `admin-frontend/`：管理后台
+- `cat_rescue.sql`：当前数据库导出
+- `init-db.bat`：Windows 数据库初始化脚本
+- `start_windows.ps1`：Windows 全量启动脚本
+- `一键启动.bat`：Windows 快速启动脚本
+- `start_mac.sh`：Mac 启动脚本
 
-脚本会自动：
-- ✓ 停止之前运行的服务
-- ✓ 检查运行环境（Java、Node.js、MySQL）
-- ✓ 启动后端服务（端口 8080）
-- ✓ 启动前端服务（端口 5000）
-- ✓ 打开浏览器
+## 默认访问地址
 
-## 其他脚本
-
-| 脚本 | 功能 |
-|------|------|
-| `一键启动.bat` | 启动前后端服务 |
-| `停止服务.bat` | 停止所有服务 |
-| `查看状态.bat` | 查看服务运行状态 |
-| `init-db.bat` | 初始化数据库（首次运行） |
-
-## 首次使用
-
-### 1. 初始化数据库
-
-双击运行 `init-db.bat`，按提示输入MySQL用户名和密码。
-
-### 2. 启动系统
-
-双击运行 `一键启动.bat`
-
-### 3. 访问系统
-
-浏览器会自动打开 http://localhost:5000
-
-## 访问地址
-
-| 服务 | 地址 |
-|------|------|
-| **前端页面** | http://localhost:5000 |
-| **后端API** | http://localhost:8080/api |
-| **API文档** | http://localhost:8080/doc.html |
+- 用户端：`http://localhost:5000`
+- 管理后台：`http://localhost:5001`
+- 后端接口：`http://localhost:8080/api`
 
 ## 默认账号
 
-| 角色 | 用户名 | 密码 |
-|------|--------|------|
-| 超级管理员 | admin | 123456 |
-| 普通用户 | zhangsan | 123456 |
+- 管理员：`admin / 123456`
+- 普通用户：`zhangsan / 123456`
 
-## 端口说明
+## 推荐启动方式
 
-- **8080** - 后端服务（Spring Boot）
-- **5000** - 前端服务（Node.js）
-- **3306** - MySQL数据库
+### Windows
 
-## 日志文件
+优先看 [README_WINDOWS.md](/Users/yuchenxu/Desktop/猫咪领养系统-部署包/deploy/README_WINDOWS.md)。
+
+如果你要同时启动用户端、管理后台和后端，推荐用：
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\start_windows.ps1
+```
+
+如果你只想快速打开用户端，可以直接双击：
+
+```text
+一键启动.bat
+```
+
+### Mac
+
+```bash
+chmod +x start_mac.sh
+./start_mac.sh
+```
+
+## 首次部署
+
+1. 安装 `Java 17+`、`Node.js 16+`、`MySQL 8+`。
+2. 进入 `deploy/` 目录。
+3. 运行 `init-db.bat` 导入 `cat_rescue.sql`。
+4. 启动系统。
+5. 打开浏览器访问前台或管理后台。
+
+## 日志位置
 
 - 后端日志：`backend/backend.log`
-- 前端日志：`frontend/frontend.log`
+- 用户前端日志：`frontend/frontend.log`
+- 管理后台日志：`admin-frontend/admin.log`
 
-## 常见问题
+## 说明
 
-### Q: 启动失败怎么办？
-
-1. 运行 `查看状态.bat` 检查服务状态
-2. 查看日志文件排查错误
-3. 确保端口 8080 和 5000 未被占用
-4. 确保 MySQL 服务已启动
-
-### Q: 如何停止服务？
-
-运行 `停止服务.bat` 或直接关闭命令窗口
-
-### Q: 端口被占用怎么办？
-
-`一键启动.bat` 会自动停止占用端口的旧服务
-
-### Q: 数据库连接失败？
-
-1. 确保 MySQL 服务已启动
-2. 检查 `backend/application-prod.yml` 中的数据库配置
-3. 确认数据库 `cat_rescue` 已创建
-
-## 系统要求
-
-- **Java 17+** - 运行后端
-- **Node.js** - 运行前端服务器
-- **MySQL 8.0+** - 数据库
-- **Windows 10/11** - 操作系统
-
-## 技术栈
-
-### 后端
-- Spring Boot 3.1.5
-- MyBatis-Plus 3.5.7
-- MySQL 8.0
-- Spring Security + JWT
-- Redis（可选）
-
-### 前端
-- Vue 3
-- Element Plus
-- Pinia
-- Vite
-
-## 功能特性
-
-- ✓ 猫咪信息管理
-- ✓ 在线领养申请
-- ✓ 救助信息发布
-- ✓ 社区动态分享
-- ✓ 众筹活动管理
-- ✓ 用户权限管理
-- ✓ 财务管理
-- ✓ 通知系统
-
-## 开发说明
-
-如需修改代码，源代码位于：
-- 前端源码：`D:\Users\cheng\Desktop\猫咪领养系统\frontend\src`
-- 后端源码：`D:\Users\cheng\Desktop\猫咪领养系统\backend\src`
-
-修改后需要重新编译并复制到部署目录。
-
-## 联系支持
-
-如有问题，请查看：
-- `启动说明.md` - 详细启动说明
-- `社区动态说明.md` - 功能说明
-- `登录问题诊断.md` - 问题排查
-
----
-
-**祝您使用愉快！让每一只流浪猫都有温暖的家 🐱**
+- 这个部署包已经包含一份最新数据库导出，可直接用于 Windows 初始化。
+- 管理后台和用户端默认都通过本机后端 `8080` 端口访问接口。
+- 如果要改数据库或端口，请同步修改环境变量后再启动。
